@@ -1,4 +1,4 @@
-#Project: Research Paper Key Summary and Recommendation Service
+# Project: Research Paper Key Summary and Recommendation Service
 
 ## Problem (Problem Definition)
 ### 1. Difficulty in Quickly and Efficiently Understanding Research Papers
