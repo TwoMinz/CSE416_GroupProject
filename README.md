@@ -1,5 +1,10 @@
 # 📚 summarAIze - AI-Powered Research Paper Summarization & Recommendation  
 
+## 👥 Team  
+- **Minhyeok Im** (114181150)  
+- **Semin Bae** (114730530)  
+- **Yoon Seok Yang** (Instructor)
+
 ## 🚀 Introduction  
 Reading research papers is important for academic learning, but it can be time-consuming and difficult, especially for students who struggle with their coursework. Long papers, complex terminology, and inefficient search systems make the process even harder. **summarAIze** aims to solve this by using AI to summarize papers, recommend relevant research, and archive in their library. We want to make academic reading faster and easier.  
 
@@ -27,22 +32,16 @@ Finding the right papers can be a challenge. Existing search systems are ineffic
 - Revisit key insights easily, making research more structured and efficient.  
 
 ## 🛠️ Tech Stack  
-- **Backend:** TBD...
-- **AI Models:** OpenAI GPT API, TBD for more...
+- **Backend:** Node.js (express)
+- **AI Models:** OpenAI GPT API
 - **Frontend:** React.js, Tailwind CSS, TBD for more...
-- **BackEnd:** TBD...
-- **Database:** TBD...
+- **Database:** SQLite
 
 ## 🚧 Current Progress  
 - [X] Problem State  
 - [ ] TBD
 - [ ] TBD
 - [ ] TBD
-
-## 👥 Team  
-- **Minhyeok Im** (114181150)  
-- **Semin Bae** (114730530)  
-- **Yoon Seok Yang** (Instructor)
 
 ## 📌 Feature Plans  
 ### General User Features
