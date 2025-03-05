@@ -1,5 +1,6 @@
-# Project: Research Paper Key Summary and Recommendation Service
-## TeamMate: Minhyeok Im(114181150), Semin Bae(114730530)
+# Research Paper Key Summary and Recommendation Service
+### Project: summarAIze
+### TeamMate: Minhyeok Im(114181150), Semin Bae(114730530)
 
 ## Problem (Problem Definition)
 ### 1. Difficulty in Quickly and Efficiently Understanding Research Papers
