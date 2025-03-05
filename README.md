@@ -1,7 +1,7 @@
 # 📚 summarAIze - AI-Powered Research Paper Summarization & Recommendation  
 
 ## 🚀 Introduction  
-Reading research papers is essential for academic learning, but it’s often overwhelming. Long papers, complex terminology, and inefficient search systems make the process time-consuming and difficult, especially for students balancing coursework. **summarAIze** is here to help! Using AI, our platform **summarizes papers, recommends relevant research, and organizes them in a personal library**, making academic reading faster and easier.  
+Reading research papers is important for academic learning, but it can be time-consuming and difficult, especially for students who struggle with their coursework. Long papers, complex terminology, and inefficient search systems make the process even harder. **summarAIze** aims to solve this by using AI to summarize papers, recommend relevant research, and archive in their library. We want to make academic reading faster and easier.  
 
 ## 🔥 The Problem  
 ### ⏳ Struggling with Time  
