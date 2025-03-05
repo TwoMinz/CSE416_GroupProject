@@ -1,35 +1,65 @@
-# Research Paper Key Summary and Recommendation Service
-### Project: summarAIze
-### TeamMate: Minhyeok Im(114181150), Semin Bae(114730530)
+# 📚 summarAIze - AI-Powered Research Paper Summarization & Recommendation  
 
-## Problem (Problem Definition)
-### 1. Difficulty in Quickly and Efficiently Understanding Research Papers
-There are many papers to read during the semester, but there is insufficient time to read them all.
-There is a lack of tools that allow users to quickly grasp only the essential points of a paper.
-### 2. High Difficulty and Abundance of Technical Jargon in Papers
-Properly understanding a paper requires prior knowledge in the related field.
-It is challenging for beginners or researchers from other disciplines, and no service exists that easily summarizes the core content.
-### 3. Inefficient Research Paper Search and Recommendation
-It takes a long time to find appropriate papers that match a given research topic.
-Existing paper recommendation systems are either inaccurate or do not adequately reflect the user's interests.
+## 🚀 Introduction  
+Reading research papers is essential for academic learning, but it’s often overwhelming. Long papers, complex terminology, and inefficient search systems make the process time-consuming and difficult, especially for students balancing coursework. **summarAIze** is here to help! Using AI, our platform **summarizes papers, recommends relevant research, and organizes them in a personal library**, making academic reading faster and easier.  
 
-## Solving (Proposed Solutions)
-### ✅ Providing AI-Based Paper Extraction → Automatically extract the essential content of papers to save time.
-#### Implementing a Paper Recommendation System → Analyzing the user's areas of interest and read papers to recommend relevant ones.
-#### Offering a Feature to Save and Archive Summarized Papers → Allowing important paper summaries to be saved and easily revisited.
-## Features (Functionalities)
-### ✅ General User Features
-#### Paper Summarization → Summarizes long papers into concise, easily understandable summaries.
-#### Paper Recommendation → Recommends papers that align with the user's areas of interest.
-#### Saving Summarized Papers → Enables saving summaries of important papers for future reference.
-#### Login and Personalization Settings → Provides user-specific recommendations and saving functionalities.
-### ✅ Administrator Features
-#### User Account Management → Registration, blocking, deletion, and permission settings.
-#### Viewing Usage Statistics → Monitoring summarization request counts and analyzing user activity.
-#### Monitoring System Logs → Checking error logs and server status to ensure service stability.
-#### Access to General User Functions → Allows direct testing of paper summarization and recommendation features as needed.
+## 🔥 The Problem  
+### ⏳ Struggling with Time  
+Students often don’t have the time to read lengthy research papers in full. While essential for deeper learning, papers can be too long and dense to process efficiently.  
 
+### 🤯 Difficult Terminology & Complex Content  
+Many research papers are filled with technical jargon and require extensive background knowledge, making them hard to understand—especially for beginners or researchers from other fields.  
 
+### 🔍 Inefficient Search & Recommendation  
+Finding the right papers can be a challenge. Existing search systems are inefficient, leaving students overwhelmed with too many results and no clear direction.  
 
+## 🎯 Our Solution  
+### ✨ **AI-Powered Summarization**  
+- Upload a **PDF**, and our AI will generate a **concise summary** to help you grasp key points quickly.  
+- Customize summaries by specifying the information you need with **user prompts**.  
 
+### 🔎 **Smart Paper Recommendation System**  
+- Get **personalized paper recommendations** based on your topics of interest.  
+- AI analyzes previously read papers to suggest **related studies**, saving time and effort.  
+
+### 📂 **Paper Storage & Management**  
+- Save and organize summarized papers in your **personal library**.  
+- Revisit key insights easily, making research more structured and efficient.  
+
+## 🛠️ Tech Stack  
+- **Backend:** TBD...
+- **AI Models:** OpenAI GPT API, TBD for more...
+- **Frontend:** React.js, Tailwind CSS, TBA for more...
+- **BackEnd:** TBD...
+- **Database:** TBD...
+
+## 🚧 Current Progress  
+- [X] Problem State  
+- [ ] TBD
+- [ ] TBD
+- [ ] TBD
+
+## 👥 Team  
+- **Minhyeok Im** (114181150)  
+- **Semin Bae** (114730530)  
+- **Yoon Seok Yang** (Instructor)
+
+## 📌 Feature Plans  
+### General User Features
+- **Paper Summarization:**  
+  Convert long papers into concise, easily understandable summaries.
+- **Paper Recommendation:**  
+  Suggest papers that align with the user's specific research interests.
+- **Archive Summarized Papers:**  
+  Enable users to save summaries for future reference.
+- **Login and Personalization:**  
+  Provide user-specific archive and personalized settings.
+
+### Administrator Features
+- **User Account Management:**  
+  Handle registration, blocking, deletion, and permission settings.
+- **System Logs Monitoring:**  
+  Check error logs and server status to ensure overall service stability.
+- **All access with General User Features**
+  Administrators have full access to all general user features.
 
