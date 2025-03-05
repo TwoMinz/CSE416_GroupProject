@@ -60,6 +60,6 @@ Finding the right papers can be a challenge. Existing search systems are ineffic
   Handle registration, blocking, deletion, and permission settings.
 - **System Logs Monitoring:**  
   Check error logs and server status to ensure overall service stability.
-- **All access with General User Features**
+- **All access with General User Features:**
   Administrators have full access to all general user features.
 
