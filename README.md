@@ -13,20 +13,19 @@ Existing paper recommendation systems are either inaccurate or do not adequately
 
 ## Solving (Proposed Solutions)
 ### ✅ Providing AI-Based Paper Extraction → Automatically extract the essential content of papers to save time.
-Implementing a Paper Recommendation System → Analyzing the user's areas of interest and read papers to recommend relevant ones.
-Offering a Feature to Save and Archive Summarized Papers → Allowing important paper summaries to be saved and easily revisited.
-Features (Functionalities)
+#### Implementing a Paper Recommendation System → Analyzing the user's areas of interest and read papers to recommend relevant ones.
+#### Offering a Feature to Save and Archive Summarized Papers → Allowing important paper summaries to be saved and easily revisited.
+## Features (Functionalities)
 ### ✅ General User Features
-Paper Summarization → Summarizes long papers into concise, easily understandable summaries.
-Paper Recommendation → Recommends papers that align with the user's areas of interest.
-Saving Summarized Papers → Enables saving summaries of important papers for future reference.
-Login and Personalization Settings → Provides user-specific recommendations and saving functionalities.
-Reference Provision
+#### Paper Summarization → Summarizes long papers into concise, easily understandable summaries.
+#### Paper Recommendation → Recommends papers that align with the user's areas of interest.
+#### Saving Summarized Papers → Enables saving summaries of important papers for future reference.
+#### Login and Personalization Settings → Provides user-specific recommendations and saving functionalities.
 ### ✅ Administrator Features
-User Account Management → Registration, blocking, deletion, and permission settings.
-Viewing Usage Statistics → Monitoring summarization request counts and analyzing user activity.
-Monitoring System Logs → Checking error logs and server status to ensure service stability.
-Access to General User Functions → Allows direct testing of paper summarization and recommendation features as needed.
+#### User Account Management → Registration, blocking, deletion, and permission settings.
+#### Viewing Usage Statistics → Monitoring summarization request counts and analyzing user activity.
+#### Monitoring System Logs → Checking error logs and server status to ensure service stability.
+#### Access to General User Functions → Allows direct testing of paper summarization and recommendation features as needed.
 
 
 
