@@ -1,5 +1,6 @@
 import React from 'react';
 import PdfUploader from '../components/PdfUploader';
+import AuthButton from '../components/Signin';
 
 const Home = () => {
   const handleFileUpload = (files) => {
@@ -10,17 +11,16 @@ const Home = () => {
     // - Navigate to a different page, etc.
   };
 
+  const handleAuthClick = () => {
+    console.log('Sign in/Log in clicked');
+    // Implement your authentication logic here
+    // For example: navigate to login page, open a modal, etc.
+  };
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-between bg-gradient-to-b from-blue-100 to-blue-500 relative p-5">
-      {/* Auth Button */}
-      <div className="absolute top-5 right-5">
-        <button 
-          className="bg-transparent border border-white/70 text-gray-800 px-4 py-2 rounded-full text-sm transition-all hover:bg-white/30"
-          onClick={() => console.log('Sign in/Log in clicked')}
-        >
-          Sign in or Log in
-        </button>
-      </div>
+      {/* Auth Button Component */}
+      <AuthButton onClick={handleAuthClick} />
       
       {/* PDF Uploader Component */}
       <div className="flex-grow flex items-center justify-center w-full">
