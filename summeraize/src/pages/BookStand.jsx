@@ -1,36 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import PdfReader from '../components/PdfReader';
 import MdFileReader from '../components/MdFileReader';
+// import testPdf from '../assets/resources/test.pdf';
 
 const BookStand = () => {
-  // 실제 구현에서는 파일을 불러오거나 API에서 데이터를 가져옵니다
-  // 여기서는 예시 데이터를 사용합니다
+  // PDF 파일 경로를 public 폴더 기준으로 설정
   const [pdfFile, setPdfFile] = useState(null);
   const [mdContent, setMdContent] = useState('');
   
   useEffect(() => {
-    // 여기에서 실제 파일이나 API 데이터를 불러옵니다
-    // 예시 데이터 설정
+    // public 폴더에 있는 PDF 파일 경로 사용 (상대 경로)
     setPdfFile('/sample-paper.pdf');
     setMdContent(sampleMarkdown);
   }, []);
 
   return (
-    <div className="flex h-screen">
-      {/* 왼쪽 PDF 뷰어 (화면의 절반) */}
-      <div className="w-1/2 border-r border-gray-300">
-        <PdfReader pdfFile={pdfFile} />
-      </div>
-      
-      {/* 오른쪽 마크다운 뷰어 (화면의 절반) */}
-      <div className="w-1/2">
-        <MdFileReader markdownContent={mdContent} />
+    <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-400 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header with app name */}
+        <header className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-white drop-shadow-sm">SummarAIze</h1>
+          <div className="flex space-x-4">
+            {/* Additional controls could go here */}
+          </div>
+        </header>
+
+        {/* Main content area with reader panels */}
+        <div className="flex flex-col md:flex-row gap-6 min-h-[80vh]">
+          {/* PDF panel */}
+          <div className="w-full md:w-1/2 bg-white bg-opacity-90 rounded-3xl shadow-xl overflow-hidden">
+            <div className="h-full">
+              <PdfReader pdfFile={pdfFile} />
+            </div>
+          </div>
+          
+          {/* Summary panel */}
+          <div className="w-full md:w-1/2 bg-white bg-opacity-90 rounded-3xl shadow-xl overflow-hidden">
+            <div className="h-full">
+              <div className="p-4 bg-blue-500 text-white">
+                <h2 className="text-xl font-semibold">AI Summary</h2>
+              </div>
+              <MdFileReader markdownContent={mdContent} />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-// 예시 마크다운 콘텐츠
+// Sample markdown content for demonstration
 const sampleMarkdown = `
 # Summary of "Deep Learning in Spiking Neural Networks"
 
