@@ -23,7 +23,9 @@ const Home = () => {
       </div>
       
       {/* PDF Uploader Component */}
-      <PdfUploader onFileUpload={handleFileUpload} />
+      <div className="flex-grow flex items-center justify-center w-full">
+        <PdfUploader onFileUpload={handleFileUpload} />
+      </div>
       
       {/* App Name */}
       <div className="mt-auto pt-5">
