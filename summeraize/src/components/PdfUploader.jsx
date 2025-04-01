@@ -65,13 +65,18 @@ const PdfUploader = ({ onFileUpload }) => {
     }
   };
 
+  const handleBrowseClick = () => {
+    document.getElementById('file-upload').click();
+  };
+
   return (
     <div 
-      className={`w-200 h-72 bg-white rounded-2xl shadow-lg flex items-center justify-center my-auto transition-all duration-300 border-2 border-dashed ${isDragging ? 'border-blue-500 border-3 shadow-blue-200 scale-102 bg-blue-50' : 'border-gray-300'}`}
+      className={`pt-4 w-full max-w-lg h-72 bg-white rounded-2xl shadow-xl flex items-center justify-center my-auto transition-all duration-300 border-2 border-dashed ${isDragging ? 'border-blue-500 border-3 shadow-blue-200 scale-102 bg-blue-50' : 'border-gray-300'}`}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onClick={handleBrowseClick}
     >
       <div>
         {/* Upload Icon */}
@@ -79,15 +84,22 @@ const PdfUploader = ({ onFileUpload }) => {
           <img 
             src={uploadIcon} 
             alt="Upload" 
-            className="w-16 h-16 object-contain"
+            className="w-20 h-20 object-contain"
             draggable="false"
           />
         </div>
-        
-        <h1 className="text-2xl font-semibold text-gray-800 mb-2">Drag & Drop</h1>
-        <p className="text-gray-600 mb-1">your file here or browse to upload</p>
-        <p className="text-gray-400 text-sm mb-5">Only pdf files are available</p>
-        
+        <div className="transition-all duration-300 ease-in-out">
+          {isDragging ? (
+            <h1 className="text-3xl font-bold text-blue-600 mb-2 transition-all duration-300 transform scale-103">Drag Here!</h1>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold text-black-1000 mb-2">Drag & Drop</h1>
+              <p className="font-semibold text-gray-1000">your file here or browse to upload</p>
+              <p className="text-gray-500 text-sm mb-5">Only pdf files are available</p>
+            </>
+          )}
+        </div>
+
         <input 
           type="file" 
           id="file-upload" 
