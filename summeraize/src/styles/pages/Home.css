@@ -1,0 +1,147 @@
+/* Home page styles */
+
+.home-container {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, #e6f0ff, #4e8cff);
+    position: relative;
+    padding: 20px;
+  }
+  
+  .auth-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+  }
+  
+  .auth-button button {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    color: #333;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+  
+  .auth-button button:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .dropzone {
+    width: 500px;
+    max-width: 90%;
+    height: 300px;
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: auto 0;
+    transition: all 0.3s ease;
+    border: 2px dashed transparent;
+  }
+  
+  .dropzone.dragging {
+    border-color: #4e8cff;
+    background-color: rgba(255, 255, 255, 0.95);
+    transform: scale(1.02);
+  }
+  
+  .dropzone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px;
+    text-align: center;
+  }
+  
+  .upload-icon {
+    width: 70px;
+    height: 70px;
+    background-color: #5d9cff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  
+  .upload-icon img {
+    width: 40px;
+    height: 40px;
+    opacity: 0.9;
+  }
+  
+  .dropzone-content h1 {
+    font-size: 28px;
+    color: #333;
+    margin: 0 0 10px 0;
+  }
+  
+  .upload-text {
+    font-size: 16px;
+    color: #555;
+    margin: 0 0 5px 0;
+  }
+  
+  .file-types {
+    font-size: 14px;
+    color: #888;
+    margin: 0 0 20px 0;
+  }
+  
+  .browse-button {
+    background-color: #5d9cff;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+  
+  .browse-button:hover {
+    background-color: #4a7fd6;
+  }
+  
+  .app-name {
+    margin-top: auto;
+    padding: 20px 0;
+  }
+  
+  .app-name h2 {
+    font-size: 24px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 600px) {
+    .dropzone {
+      height: 250px;
+    }
+    
+    .upload-icon {
+      width: 60px;
+      height: 60px;
+    }
+    
+    .dropzone-content h1 {
+      font-size: 24px;
+    }
+    
+    .upload-text {
+      font-size: 14px;
+    }
+    
+    .file-types {
+      font-size: 12px;
+    }
+  }
