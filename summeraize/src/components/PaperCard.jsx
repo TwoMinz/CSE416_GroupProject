@@ -1,53 +1,69 @@
-import React from 'react';
+import React, { useState } from 'react';
+import starredIcon from '../assets/images/colored-star.png';
+import unstarredIcon from '../assets/images/uncolored-star.png';
+import pdfIcon from '../assets/images/pdf-icon.png';
+import paperCover from '../assets/images/paper-cover.png';
 
 const PaperCard = ({ paper, onToggleStar, onClick }) => {
-  // Star 버튼 클릭 시 이벤트 버블링 방지
+  // 내부 상태로 별 표시 여부 관리 (실시간 UI 업데이트를 위함)
+  const [isStarred, setIsStarred] = useState(paper.starred);
+  
+  // Star 버튼 클릭 시 이벤트 버블링 방지 및 상태 변경
   const handleStarClick = (e) => {
     e.stopPropagation();
+    setIsStarred(!isStarred);
     onToggleStar();
   };
 
   return (
-    <div 
-      className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer"
-      onClick={onClick}
-    >
-      {/* PDF 아이콘 영역 */}
-      <div className="h-48 bg-gray-50 flex items-center justify-center border-b">
-        <div className="text-center">
-          <svg 
-            className="w-12 h-12 text-red-500 mx-auto" 
-            fill="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M8 16h8v2H8zm0-4h8v2H8zm6-10H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
-          </svg>
-          <div className="mt-2 text-sm font-medium text-gray-700">PDF Document</div>
+    <div className="bg-white rounded-3xl shadow-md overflow-hidden w-64 mx-auto relative m-4">
+      {/* 별 및 PDF 아이콘을 위한 상단 여백 영역 */}
+      <div className="h-12"></div>
+      
+      {/* Star 표시 - 왼쪽 상단에 절대 위치 */}
+      <div className="absolute left-3 top-3 z-10">
+        <button 
+          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          onClick={handleStarClick}
+        >
+          <img 
+            src={isStarred ? starredIcon : unstarredIcon} 
+            alt={isStarred ? "Starred" : "Not starred"} 
+            className="w-6 h-6" 
+          />
+        </button>
+      </div>
+
+      {/* PDF 아이콘 - 오른쪽 상단에 절대 위치 */}
+      <div className="absolute right-3 top-3 z-10">
+        <img 
+          src={pdfIcon} 
+          alt="PDF" 
+          className="w-8 h-8" 
+        />
+      </div>
+
+      {/* 논문 커버 이미지 - 클릭 가능 */}
+      <div 
+        className="px-4 cursor-pointer"
+        onClick={onClick}
+      >
+        <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
+          <img 
+            src={paperCover} 
+            alt="Paper cover" 
+            className="w-full object-cover"
+          />
         </div>
       </div>
 
-      {/* 상세 정보 영역 */}
-      <div className="p-4 flex justify-between items-start">
-        <div>
-          <h3 className="text-lg font-medium text-gray-800">{paper.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">{paper.date} {paper.time}</p>
-        </div>
-
-        {/* Star 버튼 */}
-        <button 
-          className="p-1"
-          onClick={handleStarClick}
-        >
-          <svg 
-            className={`w-6 h-6 ${paper.starred ? 'text-yellow-400' : 'text-gray-300'}`} 
-            fill="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-          </svg>
-        </button>
+      {/* 상세 정보 영역 - 클릭 가능 */}
+      <div 
+        className="p-4 text-center cursor-pointer"
+        onClick={onClick}
+      >
+        <h3 className="text-xl font-bold text-gray-800">{paper.title}</h3>
+        <p className="text-sm text-gray-500 mt-1">{paper.date} {paper.time}</p>
       </div>
     </div>
   );

@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import PdfReader from '../components/PdfReader';
 import MdFileReader from '../components/MdFileReader';
-// import testPdf from '../assets/resources/test.pdf';
+import UserToggle from '../components/UserToggle';
+import { useNavigate } from 'react-router-dom';
 
 const BookStand = () => {
+  const navigate = useNavigate();
+  const handleGoToHome = () => {
+    navigate('/');
+  };
   // PDF 파일 경로를 public 폴더 기준으로 설정
   const [pdfFile, setPdfFile] = useState(null);
   const [mdContent, setMdContent] = useState('');
@@ -16,10 +21,24 @@ const BookStand = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-400 p-6">
+      {/* 상단 사용자 메뉴 */}
+      <div className="absolute top-5 right-5 z-10">
+        <UserToggle 
+          onArchiveClick={() => console.log('Archive clicked')}
+          onSettingClick={() => console.log('Setting clicked')}
+          onLogoutClick={() => console.log('Logout clicked')}
+        />
+      </div>
+      
       <div className="max-w-7xl mx-auto">
         {/* Header with app name */}
         <header className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-white drop-shadow-sm">SummarAIze</h1>
+          <h1 
+          className="text-2xl font-bold text-white drop-shadow-sm"
+            onClick={handleGoToHome}
+            style={{ cursor: 'pointer' }}>
+            SummarAIze
+            </h1>
           <div className="flex space-x-4">
             {/* Additional controls could go here */}
           </div>
