@@ -32,7 +32,7 @@ const DebugToggle = ({ isLoggedIn, onToggleLogin }) => {
         onClick={handleGoToBookStand}
         className="bg-gray-800 text-white px-3 py-1 rounded-md text-sm shadow-md hover:bg-gray-700 transition-colors duration-200"
       >
-        Go to Library
+        Go to BookStand
       </button>
     </div>
   );
