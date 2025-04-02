@@ -47,7 +47,8 @@ const Library = () => {
           className="bg-white bg-opacity-60 rounded-3xl p-8 backdrop-blur-sm shadow-lg w-5/6 max-w-6xl mx-auto my-16 overflow-y-auto"
           style={{ 
             height: 'calc(100vh - 200px)',
-            scrollbarWidth: 'none' /* Firefox */
+            width: '95%',
+            scrollbarWidth: 'none', /* Firefox */
           }}
         >
           {/* Firefox, IE, Edge용 스크롤바 숨김 위에서 적용됨 */}
@@ -59,14 +60,16 @@ const Library = () => {
           `}</style>
 
           {/* 라이브러리 그리드 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {papers.map(paper => (
-              <PaperCard 
-                key={paper.id}
-                paper={paper}
-                onToggleStar={() => console.log('Star toggled for', paper.id)}
-                onClick={() => console.log('Paper clicked', paper.id)}
-              />
+              <div className="flex justify-center" key={paper.id}>
+                <PaperCard 
+                  key={paper.id}
+                  paper={paper}
+                  onToggleStar={() => console.log('Star toggled for', paper.id)}
+                  onClick={() => console.log('Paper clicked', paper.id)}
+                />
+              </div>
             ))}
           </div>
         </div>
