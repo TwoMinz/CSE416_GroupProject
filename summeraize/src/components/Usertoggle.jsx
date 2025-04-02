@@ -3,10 +3,16 @@ import testAvatar from '../assets/images/test-avatar.png';
 import archiveIcon from '../assets/images/archive.png';
 import settingIcon from '../assets/images/setting.png';
 import logoutIcon from '../assets/images/logout.png';
+import { useNavigate } from 'react-router-dom';
 
 const UserToggle = ({ onArchiveClick, onSettingClick, onLogoutClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const navigate = useNavigate();
+  const handleClickArchieve = () => {
+    navigate('/Library');
+  }
 
   // 드롭다운 표시 여부 토글
   const toggleDropdown = () => {
@@ -56,7 +62,7 @@ const UserToggle = ({ onArchiveClick, onSettingClick, onLogoutClick }) => {
           <ul>
             <li>
               <button
-                onClick={() => handleOptionClick(onArchiveClick)}
+                onClick={() => handleOptionClick(handleClickArchieve)}
                 className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center transition-colors duration-150"
               >
                 <img src={archiveIcon} alt="Archive" className="w-5 h-5 mr-2" />

@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import starredIcon from '../assets/images/colored-star.png';
 import unstarredIcon from '../assets/images/uncolored-star.png';
 import pdfIcon from '../assets/images/pdf-icon.png';
 import paperCover from '../assets/images/paper-cover.png';
 
 const PaperCard = ({ paper, onToggleStar, onClick }) => {
+  const navigate = useNavigate();
+
+  const handleGoToBookStand = () => {
+    navigate('/BookStand');
+  }
+
   // 내부 상태로 별 표시 여부 관리 (실시간 UI 업데이트를 위함)
   const [isStarred, setIsStarred] = useState(paper.starred);
   
@@ -46,7 +53,7 @@ const PaperCard = ({ paper, onToggleStar, onClick }) => {
       {/* 논문 커버 이미지 - 클릭 가능 */}
       <div 
         className="px-4 cursor-pointer"
-        onClick={onClick}
+        onClick={handleGoToBookStand}
       >
         <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
           <img 
@@ -60,7 +67,7 @@ const PaperCard = ({ paper, onToggleStar, onClick }) => {
       {/* 상세 정보 영역 - 클릭 가능 */}
       <div 
         className="p-4 text-center cursor-pointer"
-        onClick={onClick}
+        onClick={handleGoToBookStand}
       >
         <h3 className="text-xl font-bold text-gray-800">{paper.title}</h3>
         <p className="text-sm text-gray-500 mt-1">{paper.date} {paper.time}</p>
