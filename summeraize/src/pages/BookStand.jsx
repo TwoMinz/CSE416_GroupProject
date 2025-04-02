@@ -24,9 +24,9 @@ const BookStand = () => {
       {/* 상단 사용자 메뉴 */}
       <div className="absolute top-5 right-5 z-10">
         <UserToggle 
-          onArchiveClick={() => console.log('Archive clicked')}
-          onSettingClick={() => console.log('Setting clicked')}
-          onLogoutClick={() => console.log('Logout clicked')}
+          onArchiveClick={''}
+          onSettingClick={''}
+          onLogoutClick={''}
         />
       </div>
       
@@ -54,10 +54,10 @@ const BookStand = () => {
           </div>
           
           {/* Summary panel */}
-          <div className="w-full md:w-1/2 bg-white bg-opacity-90 rounded-3xl shadow-xl overflow-hidden">
-            <div className="h-full">
+          <div className="w-full md:w-1/2 bg-white bg-opacity-90 rounded-3xl shadow-xl overflow-hidden h-1/2">
+            <div className="h-full overflow-y-auto">
               <div className="p-4 bg-blue-500 text-white">
-                <h2 className="text-xl font-semibold">AI Summary</h2>
+                <h2 className="text-2xl font-semibold">AI Summary</h2>
               </div>
               <MdFileReader markdownContent={mdContent} />
             </div>
@@ -85,6 +85,31 @@ const sampleMarkdown = `
 - SNNs offer energy efficiency due to their sparse, event-driven computations. (p.2-3)
 - Deep SNNs attempt to combine the hierarchical processing of DNNs with the spike-based nature of SNNs. (p.3)
 - Training deep SNNs is still in its early stages but is important for both scientific understanding and engineering applications. (p.3)
+
+## Spiking Neural Networks: A Biologically Inspired Approach (p.3-4)
+
+### Architecture (p.3)
+- SNNs consist of spiking neurons and synapses with adaptable weights. (p.3)
+## Introduction (p.1-3)
+- ANNs consist of neurons with continuous activation functions, enabling gradient-based learning. (p.1)
+- The success of AlexNet in 2012 sparked interest in deep learning for various applications such as image recognition, speech recognition, and biomedical research. (p.1-2)
+- SNNs differ fundamentally from biological brains, which communicate via discrete spikes rather than continuous values. (p.2)
+- SNNs offer energy efficiency due to their sparse, event-driven computations. (p.2-3)
+- Deep SNNs attempt to combine the hierarchical processing of DNNs with the spike-based nature of SNNs. (p.3)
+- Training deep SNNs is still in its early stages but is important for both scientific understanding and engineering applications. (p.3)
+- ANNs consist of neurons with continuous activation functions, enabling gradient-based learning. (p.1)
+- The success of AlexNet in 2012 sparked interest in deep learning for various applications such as image recognition, speech recognition, and biomedical research. (p.1-2)
+- SNNs differ fundamentally from biological brains, which communicate via discrete spikes rather than continuous values. (p.2)
+- SNNs offer energy efficiency due to their sparse, event-driven computations. (p.2-3)
+- Deep SNNs attempt to combine the hierarchical processing of DNNs with the spike-based nature of SNNs. (p.3)
+- Training deep SNNs is still in its early stages but is important for both scientific understanding and engineering applications. (p.3)
+- ANNs consist of neurons with continuous activation functions, enabling gradient-based learning. (p.1)
+- The success of AlexNet in 2012 sparked interest in deep learning for various applications such as image recognition, speech recognition, and biomedical research. (p.1-2)
+- SNNs differ fundamentally from biological brains, which communicate via discrete spikes rather than continuous values. (p.2)
+- SNNs offer energy efficiency due to their sparse, event-driven computations. (p.2-3)
+- Deep SNNs attempt to combine the hierarchical processing of DNNs with the spike-based nature of SNNs. (p.3)
+- Training deep SNNs is still in its early stages but is important for both scientific understanding and engineering applications. (p.3)
+
 
 ## Spiking Neural Networks: A Biologically Inspired Approach (p.3-4)
 
