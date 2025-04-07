@@ -53,7 +53,7 @@ const Library = () => {
         >
           {/* Firefox, IE, Edge용 스크롤바 숨김 위에서 적용됨 */}
           {/* Chrome, Safari, Opera용 스크롤바 숨김 */}
-          <style jsx>{`
+          <style>{`
             div::-webkit-scrollbar {
               display: none;
             }
