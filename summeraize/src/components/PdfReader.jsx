@@ -18,7 +18,7 @@ const SimplePdfReader = ({ pdfUrl = 'https://arxiv.org/pdf/1804.08150' }) => {
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 z-10">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-            <p className="mt-2 font-medium text-gray-700">PDF 로딩 중...</p>
+            <p className="mt-2 font-medium text-gray-700">Loading PDF...</p>
           </div>
         </div>
       )}
