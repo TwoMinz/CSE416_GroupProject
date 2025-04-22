@@ -18,7 +18,7 @@ function App() {
           <Route path="/library" element={<Library />} />
           <Route path="/bookstand" element={<BookStand />} />
           <Route path="/setting" element={<Setting />} />
-          
+          <Route path="/signup" element={<Signup />} />
         </Routes>
       </div>
     </Router>
