@@ -176,14 +176,6 @@ functions:
           rules:
             - suffix: .pdf
 
-  getSummaryUrl:
-  handler: src/functions/papers/get-summary-url.handler
-  events:
-    - http:
-        path: /api/papers/{paperId}/summaryUrl
-        method: get
-        cors: true
-
   # Paper Reading Functions
   getContentUrl:
     handler: src/functions/papers/get-content-url.handler
@@ -282,26 +274,26 @@ resources:
             Projection:
               ProjectionType: ALL
 
-      ConnectionsTable:
-        Type: AWS::DynamoDB::Table
-        Properties:
-          TableName: ${self:provider.environment.CONNECTIONS_TABLE}
-          BillingMode: PAY_PER_REQUEST
-          AttributeDefinitions:
-            - AttributeName: connectionId
-              AttributeType: S
-            - AttributeName: userId
-              AttributeType: S
-          KeySchema:
-            - AttributeName: connectionId
-              KeyType: HASH
-          GlobalSecondaryIndexes:
-            - IndexName: UserIdIndex
-              KeySchema:
-                - AttributeName: userId
-                  KeyType: HASH
-              Projection:
-                ProjectionType: ALL
+    ConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.CONNECTIONS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
 
     # S3 Bucket
     PapersBucket:

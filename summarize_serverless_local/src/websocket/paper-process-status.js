@@ -42,7 +42,7 @@ module.exports.handler = async (event) => {
     // Get paper info from DynamoDB
     const paperResult = await documentClient
       .get({
-        TableName: process.env.PAPERS_TABLE,
+        TableName: process.env.CONNECTIONS_TABLE,
         Key: { paperId },
       })
       .promise();
