@@ -3,8 +3,7 @@ const AWS = require("aws-sdk");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
-// Configure AWS DynamoDB
-// In a real implementation, you'd have a separate table for WebSocket connections
+// Configure DynamoDB for storing connections
 const documentClient = new AWS.DynamoDB.DocumentClient({
   region: process.env.AWS_REGION || "localhost",
   endpoint:
@@ -31,6 +30,8 @@ module.exports.handler = async (event) => {
   console.log("WebSocket connect event:", event);
 
   const connectionId = event.requestContext.connectionId;
+  const domainName = event.requestContext.domainName;
+  const stage = event.requestContext.stage;
 
   try {
     // Get auth token from querystring
@@ -38,7 +39,6 @@ module.exports.handler = async (event) => {
     const token = queryParams.token;
 
     if (!token) {
-      console.log("No token provided");
       // For development, allow connections without tokens
       if (process.env.NODE_ENV === "development") {
         console.log("Development mode: Allowing connection without token");
@@ -59,26 +59,20 @@ module.exports.handler = async (event) => {
 
     const userId = decoded.userId;
 
-    // In production, store connection details in DynamoDB
-    // For development, just log it
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `Development mode: User ${userId} connected with connection ID ${connectionId}`
-      );
-    } else {
-      // In a real implementation, you would save to a WebSocket connections table
-      // Example implementation:
-      /*
-      await documentClient.put({
-        TableName: 'websocket-connections',
+    // Store connection in DynamoDB
+    await documentClient
+      .put({
+        TableName: process.env.CONNECTIONS_TABLE || "summaraize-connections",
         Item: {
           connectionId,
           userId,
-          timestamp: new Date().toISOString()
-        }
-      }).promise();
-      */
-    }
+          timestamp: new Date().toISOString(),
+          endpoint: `https://${domainName}/${stage}`,
+        },
+      })
+      .promise();
+
+    console.log(`User ${userId} connected with connection ID ${connectionId}`);
 
     return { statusCode: 200, body: "Connected" };
   } catch (error) {
