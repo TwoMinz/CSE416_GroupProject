@@ -1,0 +1,291 @@
+service: summaraize-backend
+
+frameworkVersion: "3"
+
+plugins:
+  - serverless-offline
+  - serverless-dynamodb-local
+  - serverless-s3-local
+  - serverless-dotenv-plugin
+  - serverless-websockets-plugin
+
+custom:
+  # Set up local tables for development
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+      seed: true
+    seed:
+      domain:
+        sources:
+          - table: ${self:provider.environment.USERS_TABLE}
+            sources: [./resources/dynamodb-seed/users.json]
+          - table: ${self:provider.environment.PAPERS_TABLE}
+            sources: [./resources/dynamodb-seed/papers.json]
+
+  # Set up local S3 for development
+  s3:
+    host: localhost
+    port: 4569
+    directory: ./local-s3-bucket
+
+  # WebSocket settings
+  websocketApiName: summaraize-websocket-api
+  websocketApiRouteSelectionExpression: $request.body.action
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  environment:
+    USERS_TABLE: summaraize-users-${self:provider.stage}
+    PAPERS_TABLE: summaraize-papers-${self:provider.stage}
+    PAPERS_BUCKET: summaraize-papers-${self:provider.stage}
+    JWT_SECRET: ${env:JWT_SECRET, 'local-dev-secret'}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY, ''}
+    GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID, ''}
+    GOOGLE_CLIENT_SECRET: ${env:GOOGLE_CLIENT_SECRET, ''}
+    NODE_ENV: ${self:provider.stage}
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchWriteItem
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PAPERS_TABLE}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}/index/*"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PAPERS_TABLE}/index/*"
+
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+          Resource: "arn:aws:s3:::${self:provider.environment.PAPERS_BUCKET}/*"
+
+functions:
+  # Authentication Functions
+  signUp:
+    handler: src/functions/auth/signup.handler
+    events:
+      - http:
+          path: /api/auth/signup
+          method: post
+          cors: true
+
+  login:
+    handler: src/functions/auth/login.handler
+    events:
+      - http:
+          path: /api/auth/login
+          method: post
+          cors: true
+
+  googleLogin:
+    handler: src/functions/auth/google-auth.handler
+    events:
+      - http:
+          path: /api/auth/google
+          method: get
+          cors: true
+
+  refreshToken:
+    handler: src/functions/auth/refresh-token.handler
+    events:
+      - http:
+          path: /api/auth/refresh
+          method: post
+          cors: true
+
+  # User Profile Functions
+  changeUsername:
+    handler: src/functions/auth/change-username.handler
+    events:
+      - http:
+          path: /api/auth/modify/username
+          method: post
+          cors: true
+
+  changePassword:
+    handler: src/functions/auth/change-password.handler
+    events:
+      - http:
+          path: /api/auth/modify/password
+          method: post
+          cors: true
+
+  changeProfileImage:
+    handler: src/functions/auth/change-profile-image.handler
+    events:
+      - http:
+          path: /api/auth/modify/profileImage
+          method: post
+          cors: true
+
+  logout:
+    handler: src/functions/auth/logout.handler
+    events:
+      - http:
+          path: /api/auth/logout
+          method: post
+          cors: true
+
+  # Paper Upload Functions
+  requestFileUpload:
+    handler: src/functions/papers/upload-request.handler
+    events:
+      - http:
+          path: /api/upload/request
+          method: post
+          cors: true
+
+  confirmUpload:
+    handler: src/functions/papers/confirm-upload.handler
+    events:
+      - http:
+          path: /api/upload/confirm
+          method: post
+          cors: true
+
+  # Paper Processing Functions
+  processPaper:
+    handler: src/functions/papers/process-paper.handler
+    timeout: 300 # 5 minutes for processing
+    events:
+      - s3:
+          bucket: ${self:provider.environment.PAPERS_BUCKET}
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .pdf
+
+  # Paper Reading Functions
+  getContentUrl:
+    handler: src/functions/papers/get-content-url.handler
+    events:
+      - http:
+          path: /api/papers/{paperId}/contentUrl
+          method: get
+          cors: true
+
+  getPaperDetail:
+    handler: src/functions/papers/get-paper-detail.handler
+    events:
+      - http:
+          path: /api/papers/{paperId}/detail
+          method: get
+          cors: true
+
+  # Library Functions
+  loadLibrary:
+    handler: src/functions/library/load-library.handler
+    events:
+      - http:
+          path: /api/library/load
+          method: post
+          cors: true
+
+  searchPaper:
+    handler: src/functions/papers/search-paper.handler
+    events:
+      - http:
+          path: /api/papers/search
+          method: post
+          cors: true
+
+  # WebSocket Functions
+  wsConnect:
+    handler: src/websocket/connect.handler
+    events:
+      - websocket:
+          route: $connect
+
+  wsDisconnect:
+    handler: src/websocket/disconnect.handler
+    events:
+      - websocket:
+          route: $disconnect
+
+  wsDefault:
+    handler: src/websocket/default.handler
+    events:
+      - websocket:
+          route: $default
+
+resources:
+  Resources:
+    # DynamoDB Tables
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    PapersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.PAPERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: paperId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: paperId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    # S3 Bucket
+    PapersBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.PAPERS_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - "*"
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              AllowedOrigins:
+                - "*"
+              MaxAge: 3600
