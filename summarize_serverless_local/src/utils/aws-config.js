@@ -1,51 +1,97 @@
-// Centralized AWS Configuration
+// AWS 설정 중앙화
 const AWS = require("aws-sdk");
 require("dotenv").config();
 
-// Default configuration for development environment
+// 개발 환경인지 확인
 const isDevelopment = process.env.NODE_ENV === "development";
+// 실제 AWS 리소스를 사용할지 여부
+const useActualAwsResources = process.env.USE_ACTUAL_AWS_RESOURCES === "true";
 
-// DynamoDB configuration
+// DynamoDB 설정
 const getDynamoDBClient = () => {
-  return new AWS.DynamoDB.DocumentClient({
-    region: process.env.AWS_REGION || "localhost",
-    endpoint: isDevelopment ? "http://localhost:8000" : undefined,
-    accessKeyId: isDevelopment ? "LOCAL_ACCESS_KEY" : undefined,
-    secretAccessKey: isDevelopment ? "LOCAL_SECRET_KEY" : undefined,
-  });
-};
-
-// DynamoDB (raw) configuration
-const getDynamoDB = () => {
-  return new AWS.DynamoDB({
-    region: process.env.AWS_REGION || "localhost",
-    endpoint: isDevelopment ? "http://localhost:8000" : undefined,
-    accessKeyId: isDevelopment ? "LOCAL_ACCESS_KEY" : undefined,
-    secretAccessKey: isDevelopment ? "LOCAL_SECRET_KEY" : undefined,
-  });
-};
-
-// S3 configuration
-const getS3Client = () => {
-  return new AWS.S3({
-    region: process.env.AWS_REGION || "localhost",
-    endpoint: isDevelopment ? "http://localhost:4569" : undefined, // S3 local endpoint
-    s3ForcePathStyle: isDevelopment, // Required for local development
-    accessKeyId: isDevelopment ? "LOCAL_ACCESS_KEY" : undefined,
-    secretAccessKey: isDevelopment ? "LOCAL_SECRET_KEY" : undefined,
-  });
-};
-
-// WebSocket API Gateway configuration
-const getWebSocketClient = () => {
-  if (!isDevelopment) {
-    return new AWS.ApiGatewayManagementApi({
-      apiVersion: "2018-11-29",
-      endpoint: process.env.WEBSOCKET_API_URL,
+  // 개발 환경이지만 실제 AWS 리소스 사용 설정이 켜져 있는 경우
+  if (isDevelopment && useActualAwsResources) {
+    return new AWS.DynamoDB.DocumentClient({
+      region: process.env.AWS_REGION,
+      // AWS 자격 증명은 ~/.aws/credentials 파일이나 환경 변수에서 자동으로 가져옴
     });
   }
 
-  // For development, we'll use a mock WebSocket client
+  // 일반 개발 환경 (로컬 DynamoDB 사용)
+  if (isDevelopment) {
+    return new AWS.DynamoDB.DocumentClient({
+      region: process.env.AWS_REGION || "localhost",
+      endpoint: "http://localhost:8000",
+      accessKeyId: "LOCAL_ACCESS_KEY",
+      secretAccessKey: "LOCAL_SECRET_KEY",
+    });
+  }
+
+  // 프로덕션 환경
+  return new AWS.DynamoDB.DocumentClient({
+    region: process.env.AWS_REGION,
+  });
+};
+
+// DynamoDB (raw) 설정
+const getDynamoDB = () => {
+  if (isDevelopment && useActualAwsResources) {
+    return new AWS.DynamoDB({
+      region: process.env.AWS_REGION,
+    });
+  }
+
+  if (isDevelopment) {
+    return new AWS.DynamoDB({
+      region: process.env.AWS_REGION || "localhost",
+      endpoint: "http://localhost:8000",
+      accessKeyId: "LOCAL_ACCESS_KEY",
+      secretAccessKey: "LOCAL_SECRET_KEY",
+    });
+  }
+
+  return new AWS.DynamoDB({
+    region: process.env.AWS_REGION,
+  });
+};
+
+// S3 설정
+const getS3Client = () => {
+  if (isDevelopment && useActualAwsResources) {
+    return new AWS.S3({
+      region: process.env.AWS_REGION,
+    });
+  }
+
+  if (isDevelopment) {
+    return new AWS.S3({
+      region: process.env.AWS_REGION || "localhost",
+      endpoint: "http://localhost:4569",
+      s3ForcePathStyle: true,
+      accessKeyId: "LOCAL_ACCESS_KEY",
+      secretAccessKey: "LOCAL_SECRET_KEY",
+    });
+  }
+
+  return new AWS.S3({
+    region: process.env.AWS_REGION,
+  });
+};
+
+// WebSocket API Gateway 설정
+const getWebSocketClient = () => {
+  if (!isDevelopment || (isDevelopment && useActualAwsResources)) {
+    // 실제 WebSocket API 사용
+    const endpoint = process.env.WEBSOCKET_API_URL;
+    if (endpoint) {
+      return new AWS.ApiGatewayManagementApi({
+        apiVersion: "2018-11-29",
+        endpoint,
+      });
+    }
+  }
+
+  // 개발 환경에서는 모의 WebSocket 클라이언트 사용
   return {
     postToConnection: (params) => {
       console.log(
@@ -59,15 +105,15 @@ const getWebSocketClient = () => {
   };
 };
 
-// Lambda client for invoking other functions
+// Lambda 클라이언트
 const getLambdaClient = () => {
-  if (!isDevelopment) {
+  if (!isDevelopment || (isDevelopment && useActualAwsResources)) {
     return new AWS.Lambda({
       region: process.env.AWS_REGION,
     });
   }
 
-  // For development, we'll use local HTTP calls instead
+  // 개발 환경에서는 모의 Lambda 호출 사용
   return {
     invoke: (params) => {
       console.log(
@@ -95,4 +141,5 @@ module.exports = {
   getWebSocketClient,
   getLambdaClient,
   isDevelopment,
+  useActualAwsResources,
 };
