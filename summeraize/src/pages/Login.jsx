@@ -74,7 +74,7 @@ const Login = () => {
           {/* Left side - Help links */}
           <div className="flex-1 text-sm flex flex-col space-y-2">
             <a href="#" className="text-white font-semibold hover:text-blue-700 text-base">
-              Any help?
+              Sing Up
             </a>
             <a href="#" className="text-white font-semibold hover:text-blue-700 text-base">
               Forgot PW

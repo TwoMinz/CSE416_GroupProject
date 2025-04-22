@@ -5,6 +5,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Library from './pages/Library';
 import BookStand from './pages/BookStand';
+import Setting from './pages/Setting';
+import Signup from './pages/Signup';
 
 function App() {
   return (
@@ -15,6 +17,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/library" element={<Library />} />
           <Route path="/bookstand" element={<BookStand />} />
+          <Route path="/setting" element={<Setting />} />
+          
         </Routes>
       </div>
     </Router>
