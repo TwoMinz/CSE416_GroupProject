@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SimplePopup, { usePopup } from '../components/SimplePopup';
 import { useNavigate } from 'react-router-dom';
 import researchImage from '../assets/images/student-research.jpg';
 
@@ -6,6 +7,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { isOpen, popupContent, openPopup, closePopup } = usePopup();
 
   const handleClickWebLogo = () => {
     navigate('/');
@@ -19,9 +21,32 @@ const Login = () => {
     navigate('/');
   };
 
+    // JSX 콘텐츠를 포함한 팝업 열기
+    const showDetailedPopup = () => {
+      openPopup(
+        "Black seabream", 
+        <div>
+          <p className="mb-2">
+            The <span className="font-semibold">black seabream</span> <span className="italic">(Spondyliosoma cantharus)</span> is a species of marine ray-finned fish belonging to the family Sparidae, which includes the seabreams and porgies.
+          </p>
+          <p>
+            This fish has a wide distribution in the eastern Atlantic Ocean and the Mediterranean and Black Seas. The black seabream is an important food fish, especially in Europe.
+          </p>
+        </div>
+      );
+    };
+
   return (
     <div className="min-h-screen flex bg-gradient-to-b from-blue-100 to-blue-500">
       {/* Left side - Login Form */}
+      
+      <SimplePopup
+      title={popupContent.title}
+      content={popupContent.content}
+      isOpen={isOpen}
+      onClose={closePopup}
+      />
+
       <div className="w-full md:w-2/5 p-8 md:p-12 flex flex-col justify-center">
         <div className="mb-4 text-left">
         <h2 
@@ -73,7 +98,7 @@ const Login = () => {
         <div className="flex mt-3 text-left ml-2">
           {/* Left side - Help links */}
           <div className="flex-1 text-sm flex flex-col space-y-2">
-            <a href="#" className="text-white font-semibold hover:text-blue-700 text-base">
+            <a onClick={showDetailedPopup} className="text-white font-semibold hover:text-blue-700 text-base">
               Sing Up
             </a>
             <a href="#" className="text-white font-semibold hover:text-blue-700 text-base">
