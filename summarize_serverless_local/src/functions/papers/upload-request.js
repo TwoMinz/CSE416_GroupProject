@@ -1,34 +1,12 @@
 "use strict";
-const AWS = require("aws-sdk");
-const { v4: uuidv4 } = require("uuid");
 const jwt = require("jsonwebtoken");
+const {
+  getDynamoDBClient,
+  getWebSocketClient,
+  getLambdaClient,
+  isDevelopment,
+} = require("../../utils/aws-config");
 require("dotenv").config();
-
-// Configure AWS
-const s3 = new AWS.S3({
-  region: process.env.AWS_REGION || "localhost",
-  endpoint:
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:4569" // Endpoint for serverless-s3-local
-      : undefined,
-  s3ForcePathStyle: process.env.NODE_ENV === "development", // Required for local development
-  accessKeyId:
-    process.env.NODE_ENV === "development" ? "LOCAL_ACCESS_KEY" : undefined,
-  secretAccessKey:
-    process.env.NODE_ENV === "development" ? "LOCAL_SECRET_KEY" : undefined,
-});
-
-const documentClient = new AWS.DynamoDB.DocumentClient({
-  region: process.env.AWS_REGION || "localhost",
-  endpoint:
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:8000"
-      : undefined,
-  accessKeyId:
-    process.env.NODE_ENV === "development" ? "LOCAL_ACCESS_KEY" : undefined,
-  secretAccessKey:
-    process.env.NODE_ENV === "development" ? "LOCAL_SECRET_KEY" : undefined,
-});
 
 // Verify JWT token
 const verifyToken = (token) => {
@@ -36,18 +14,113 @@ const verifyToken = (token) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return decoded;
   } catch (error) {
-    throw new Error("Invalid token");
+    throw new Error(`Invalid token: ${error.message}`);
+  }
+};
+
+// Send WebSocket message
+const sendWebSocketMessage = async (connectionId, message) => {
+  try {
+    const websocketAPI = getWebSocketClient();
+
+    if (isDevelopment) {
+      console.log(
+        `[CONFIRM-UPLOAD] [WEBSOCKET] Would send to ${connectionId}:`,
+        message
+      );
+      return true;
+    }
+
+    await websocketAPI
+      .postToConnection({
+        ConnectionId: connectionId,
+        Data: JSON.stringify(message),
+      })
+      .promise();
+
+    return true;
+  } catch (error) {
+    console.error(`[CONFIRM-UPLOAD] Error sending WebSocket message:`, error);
+    return false;
+  }
+};
+
+// Helper to trigger paper processing in development
+const triggerPaperProcessing = async (paperId, fileKey, userId) => {
+  const lambda = getLambdaClient();
+
+  if (isDevelopment) {
+    console.log(
+      `[CONFIRM-UPLOAD] Would trigger paper processing for paperId: ${paperId}`
+    );
+
+    // In development, we can call the function directly for testing
+    // This simulates what would happen when the PDF is uploaded to S3
+    try {
+      // Requires process-paper.js to be properly implemented for direct invocation
+      const processPaperModule = require("../papers/process-paper");
+
+      const testEvent = {
+        body: JSON.stringify({
+          paperId,
+          fileKey,
+          userId,
+        }),
+      };
+
+      console.log(
+        "[CONFIRM-UPLOAD] Directly invoking paper processing function"
+      );
+      const result = await processPaperModule.handler(testEvent);
+      console.log("[CONFIRM-UPLOAD] Processing result:", result);
+
+      return true;
+    } catch (error) {
+      console.error(
+        "[CONFIRM-UPLOAD] Error in direct processing invocation:",
+        error
+      );
+      return false;
+    }
+  } else {
+    // In production, this would be triggered by an S3 event
+    // But we can also manually invoke it if needed
+    try {
+      await lambda
+        .invoke({
+          FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-processPaper`,
+          InvocationType: "Event",
+          Payload: JSON.stringify({
+            paperId,
+            fileKey,
+            userId,
+          }),
+        })
+        .promise();
+
+      return true;
+    } catch (error) {
+      console.error("[CONFIRM-UPLOAD] Error invoking Lambda function:", error);
+      return false;
+    }
   }
 };
 
 module.exports.handler = async (event) => {
   try {
+    console.log("[CONFIRM-UPLOAD] Processing upload confirmation");
+
+    // Get DynamoDB client
+    const documentClient = getDynamoDBClient();
+
     // Parse request body
-    const { fileName, fileType, fileSize } = JSON.parse(event.body);
+    const body =
+      typeof event.body === "string" ? JSON.parse(event.body) : event.body;
+    const { paperId, fileKey, uploadSuccess, fileName } = body;
 
     // Extract authorization token
     const authHeader =
-      event.headers.Authorization || event.headers.authorization;
+      event.headers?.Authorization || event.headers?.authorization;
     if (!authHeader) {
       return {
         statusCode: 401,
@@ -69,6 +142,7 @@ module.exports.handler = async (event) => {
     try {
       decoded = verifyToken(token);
     } catch (error) {
+      console.error("[CONFIRM-UPLOAD] Token verification failed:", error);
       return {
         statusCode: 401,
         headers: {
@@ -83,9 +157,12 @@ module.exports.handler = async (event) => {
     }
 
     const userId = decoded.userId;
+    console.log(
+      `[CONFIRM-UPLOAD] Confirmation from user ${userId} for paper ${paperId}`
+    );
 
     // Validate input
-    if (!fileName || !fileType) {
+    if (!paperId || !fileKey || uploadSuccess === undefined) {
       return {
         statusCode: 400,
         headers: {
@@ -94,84 +171,131 @@ module.exports.handler = async (event) => {
         },
         body: JSON.stringify({
           success: false,
-          message: "File name and type are required",
+          message: "PaperId, fileKey, and uploadSuccess are required",
         }),
       };
     }
 
-    // Only allow PDF files
-    if (fileType !== "application/pdf") {
+    // Get paper record to verify ownership
+    let paper;
+    try {
+      const paperResult = await documentClient
+        .get({
+          TableName: process.env.PAPERS_TABLE,
+          Key: {
+            paperId,
+          },
+        })
+        .promise();
+
+      if (!paperResult.Item) {
+        return {
+          statusCode: 404,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": true,
+          },
+          body: JSON.stringify({
+            success: false,
+            message: "Paper not found",
+          }),
+        };
+      }
+
+      paper = paperResult.Item;
+    } catch (error) {
+      console.error("[CONFIRM-UPLOAD] Error retrieving paper record:", error);
+      throw new Error(`Failed to retrieve paper: ${error.message}`);
+    }
+
+    // Verify paper ownership
+    if (paper.userId !== userId) {
       return {
-        statusCode: 400,
+        statusCode: 403,
         headers: {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Credentials": true,
         },
         body: JSON.stringify({
           success: false,
-          message: "Only PDF files are allowed",
+          message: "You do not have permission to update this paper",
         }),
       };
     }
 
-    // Generate unique paper ID and S3 key
-    const paperId = uuidv4();
-    const fileKey = `papers/${userId}/${paperId}/${fileName}`;
-
-    // Generate pre-signed URL
-    const expiresIn = 300; // 5 minutes
-
-    // For local development, use direct upload config
-    // For production, use the presigned URL approach
-    let uploadConfig;
-
-    if (process.env.NODE_ENV === "development") {
-      // Generate direct upload config for local development
-      uploadConfig = {
-        url: `http://localhost:4569/${process.env.PAPERS_BUCKET}`,
-        fields: {
-          key: fileKey,
-          bucket: process.env.PAPERS_BUCKET,
-          "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
-          "X-Amz-Credential":
-            "LOCAL_ACCESS_KEY/20250422/localhost/s3/aws4_request",
-          "X-Amz-Date": "20250422T000000Z",
-          "X-Amz-Signature": "local_signature",
-          Policy: "local_policy",
-        },
-      };
-    } else {
-      // Create a pre-signed URL for production
-      uploadConfig = s3.createPresignedPost({
-        Bucket: process.env.PAPERS_BUCKET,
-        Fields: {
-          key: fileKey,
-        },
-        Expires: expiresIn,
-        Conditions: [
-          ["content-length-range", 0, 10 * 1024 * 1024], // up to 10 MB
-        ],
-      });
-    }
-
-    // Create a new paper entry in DynamoDB
+    // Update paper status based on upload result
     const timestamp = new Date().toISOString();
-    const paperItem = {
-      paperId,
-      userId,
-      title: fileName, // Use filename as initial title
-      fileKey,
-      status: "pending", // Initial status
-      uploadDate: timestamp,
-      lastUpdated: timestamp,
+    let updateExpression = "SET lastUpdated = :timestamp";
+    let expressionAttributeValues = {
+      ":timestamp": timestamp,
     };
 
-    await documentClient
-      .put({
-        TableName: process.env.PAPERS_TABLE,
-        Item: paperItem,
-      })
-      .promise();
+    if (uploadSuccess) {
+      updateExpression += ", status = :status";
+      expressionAttributeValues[":status"] = "processing";
+
+      // Update title if provided
+      if (fileName) {
+        updateExpression += ", title = :title";
+        expressionAttributeValues[":title"] = fileName;
+      }
+    } else {
+      updateExpression += ", status = :status";
+      expressionAttributeValues[":status"] = "failed";
+    }
+
+    try {
+      await documentClient
+        .update({
+          TableName: process.env.PAPERS_TABLE,
+          Key: {
+            paperId,
+          },
+          UpdateExpression: updateExpression,
+          ExpressionAttributeValues: expressionAttributeValues,
+          ReturnValues: "ALL_NEW",
+        })
+        .promise();
+      console.log(
+        `[CONFIRM-UPLOAD] Updated paper status to: ${
+          uploadSuccess ? "processing" : "failed"
+        }`
+      );
+    } catch (error) {
+      console.error("[CONFIRM-UPLOAD] Error updating paper status:", error);
+      throw new Error(`Failed to update paper status: ${error.message}`);
+    }
+
+    // For successful uploads, trigger paper processing
+    if (uploadSuccess) {
+      console.log("[CONFIRM-UPLOAD] Upload successful, triggering processing");
+
+      // In production, this would be handled by the S3 trigger
+      // For development, we'll manually trigger the process
+      const processingTriggered = await triggerPaperProcessing(
+        paperId,
+        fileKey,
+        userId
+      );
+
+      if (!processingTriggered) {
+        console.warn("[CONFIRM-UPLOAD] Failed to trigger paper processing");
+      }
+
+      // Get websocket connections for this user (if any) to send status updates
+      // In a real implementation, you would retrieve active connections from a table
+      if (isDevelopment) {
+        // Simulate a WebSocket message
+        await sendWebSocketMessage("dev-connection-id", {
+          type: "PAPER_STATUS_UPDATE",
+          paperId,
+          status: "processing",
+          message: "Paper processing started",
+        });
+      } else {
+        // Production code to send WebSocket updates would go here
+      }
+    }
 
     return {
       statusCode: 200,
@@ -181,15 +305,15 @@ module.exports.handler = async (event) => {
       },
       body: JSON.stringify({
         success: true,
+        message: uploadSuccess
+          ? "Upload confirmed, paper processing started"
+          : "Upload failed status recorded",
         paperId,
-        fileKey,
-        uploadUrl: uploadConfig.url,
-        directUploadConfig: uploadConfig,
-        expiresIn,
+        status: uploadSuccess ? "processing" : "failed",
       }),
     };
   } catch (error) {
-    console.error("Error generating upload URL:", error);
+    console.error("[CONFIRM-UPLOAD] Unhandled error:", error);
 
     return {
       statusCode: 500,
@@ -199,7 +323,8 @@ module.exports.handler = async (event) => {
       },
       body: JSON.stringify({
         success: false,
-        message: "Error generating upload URL",
+        message: "Error confirming upload",
+        error: isDevelopment ? error.message : "Internal server error",
       }),
     };
   }
