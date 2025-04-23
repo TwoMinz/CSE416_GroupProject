@@ -116,3 +116,5 @@ coverage/
 
 # React testing
 /coverage
+
+summarize_serverless_local/src/utils/aws-configure.js

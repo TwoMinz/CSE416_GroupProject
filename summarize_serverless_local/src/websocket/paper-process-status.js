@@ -28,7 +28,7 @@ module.exports.handler = async (event) => {
     // Get the connection record to find userId
     const connectionResult = await documentClient
       .get({
-        TableName: process.env.CONNECTIONS_TABLE || "summaraize-connections",
+        TableName: process.env.CONNECTIONS_TABLE || "connection",
         Key: { connectionId },
       })
       .promise();

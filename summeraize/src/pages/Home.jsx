@@ -1,64 +1,101 @@
-import React, { useState } from 'react';
-import PdfUploader from '../components/PdfUploader';
-import Signin from '../components/Signin';
-import UserToggle from '../components/UserToggle';
-import DebugToggle from '../components/DebugToggle';
+import React, { useState, useEffect } from "react";
+import PdfUploader from "../components/PdfUploader";
+import Signin from "../components/Signin";
+import UserToggle from "../components/UserToggle";
+import DebugToggle from "../components/DebugToggle";
+import { useAuth } from "../context/AuthContext";
+import {
+  initWebSocket,
+  addListener,
+  removeListener,
+} from "../services/websocket";
 
 const Home = () => {
-  // 로그인 상태 관리
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Use the auth context instead of local state
+  const { authenticated, user, logout } = useAuth();
+  const [uploadStatus, setUploadStatus] = useState(null);
+
+  // Initialize WebSocket connection when authenticated
+  useEffect(() => {
+    if (authenticated) {
+      // Initialize WebSocket connection
+      initWebSocket();
+
+      // Add listeners for paper status updates
+      const unsubscribe = addListener("PAPER_STATUS_UPDATE", (data) => {
+        console.log("Paper status update:", data);
+        setUploadStatus(data);
+      });
+
+      return () => {
+        // Remove listeners when component unmounts
+        unsubscribe();
+      };
+    }
+  }, [authenticated]);
 
   const handleFileUpload = (files) => {
-    console.log('Files received in Home component:', files);
-    // 파일 업로드 처리 로직
+    console.log("Files received in Home component:", files);
+    // File upload handling is now in the PdfUploader component
   };
 
-  // 로그인 상태 토글 (디버깅용)
-  const toggleLoginState = () => {
-    setIsLoggedIn(!isLoggedIn);
-    console.log('Login state toggled:', !isLoggedIn);
-  };
-
-  // UserToggle 옵션 핸들러 함수
+  // UserToggle option handlers
   const handleArchiveClick = () => {
-    console.log('Archive clicked');
+    console.log("Archive clicked");
+    // Navigate to library would happen in the UserToggle component
   };
 
   const handleSettingClick = () => {
-    console.log('Setting clicked');
+    console.log("Setting clicked");
   };
 
-  const handleLogoutClick = () => {
-    setIsLoggedIn(false);
-    console.log('Logged out');
+  const handleLogoutClick = async () => {
+    try {
+      await logout();
+      console.log("Logged out");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-between bg-gradient-to-b from-blue-100 to-blue-500 relative p-5">
-      {/* 디버그 토글 - 테스트용 */}
-      <DebugToggle isLoggedIn={isLoggedIn} onToggleLogin={toggleLoginState} />
-      
-      {/* 로그인 버튼 또는 사용자 토글 컴포넌트 */}
+      {/* Debug toggle - for development only */}
+      {process.env.NODE_ENV === "development" && (
+        <DebugToggle isLoggedIn={authenticated} onToggleLogin={() => {}} />
+      )}
+
+      {/* Login button or user toggle component */}
       <div className="absolute top-5 right-5">
-        {isLoggedIn ? (
-          <UserToggle 
+        {authenticated ? (
+          <UserToggle
             onArchiveClick={handleArchiveClick}
             onSettingClick={handleSettingClick}
             onLogoutClick={handleLogoutClick}
           />
         ) : (
-          <Signin onClick={toggleLoginState} />
+          <Signin />
         )}
       </div>
-      
-      {/* PDF 업로더 컴포넌트 */}
+
+      {/* PDF uploader component */}
       <div className="flex-grow flex items-center justify-center w-full">
         <PdfUploader onFileUpload={handleFileUpload} />
       </div>
-      
-      {/* 앱 이름 */}
+
+      {/* Upload status notification */}
+      {uploadStatus && (
+        <div className="fixed bottom-5 right-5 bg-white p-4 rounded-lg shadow-lg max-w-md">
+          <h3 className="font-bold text-lg">{uploadStatus.status}</h3>
+          <p>{uploadStatus.message}</p>
+        </div>
+      )}
+
+      {/* App name */}
       <div className="mt-auto pt-5">
-        <h2 className="text-2xl font-bold text-white drop-shadow-sm">SummarAIze</h2>
+        <h2 className="text-2xl font-bold text-white drop-shadow-sm">
+          SummarAIze
+        </h2>
       </div>
     </div>
   );

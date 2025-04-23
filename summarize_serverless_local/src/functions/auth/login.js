@@ -82,9 +82,9 @@ module.exports.handler = async (event) => {
     }
 
     // Generate JWT tokens
-    const expiresIn = parseInt(process.env.JWT_EXPIRATION) || 3600; // Default to 1 hour
+    const expiresIn = parseInt(process.env.JWT_EXPIRATION) || 3600;
     const refreshExpiresIn =
-      parseInt(process.env.REFRESH_TOKEN_EXPIRATION) || 604800; // Default to 7 days
+      parseInt(process.env.REFRESH_TOKEN_EXPIRATION) || 604800;
 
     const accessToken = jwt.sign(
       {

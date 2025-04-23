@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import researchImage from "../assets/images/student-research.jpg";
-import { useAuth } from "../context/AuthContext";
+import { signup } from "../services/auth";
 
-const Login = () => {
+const Signup = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -15,34 +16,47 @@ const Login = () => {
     navigate("/");
   };
 
-  const handleClickSignUp = () => {
-    navigate("/SignUp");
+  const handleGoToLogin = () => {
+    navigate("/login");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
-      setError("Email and password are required");
+    // Validation
+    if (!email || !password || !username) {
+      setError("All fields are required");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Call the login function from AuthContext
-      const result = await login(email, password);
+      // Call the signup function from auth service
+      const result = await signup(email, password, username);
 
       if (result.success) {
-        // Redirect to home page after successful login
-        navigate("/");
+        // Redirect to login page after successful signup
+        navigate("/login", {
+          state: { message: "Account created successfully! Please log in." },
+        });
       } else {
-        setError(result.error || "Login failed. Please try again.");
+        setError(result.message || "Signup failed. Please try again.");
       }
     } catch (error) {
-      console.error("Login error:", error);
-      setError("An error occurred during login. Please try again.");
+      console.error("Signup error:", error);
+      setError("An error occurred during signup. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +64,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-b from-blue-100 to-blue-500">
-      {/* Left side - Login Form */}
+      {/* Left side - Signup Form */}
       <div className="w-full md:w-2/5 p-8 md:p-12 flex flex-col justify-center">
         <div className="mb-4 text-left">
           <h2
@@ -60,9 +74,9 @@ const Login = () => {
           >
             SummarAIze
           </h2>
-          <h1 className="text-gray-800 text-4xl font-bold">Log in</h1>
+          <h1 className="text-gray-800 text-4xl font-bold">Sign up</h1>
           <p className="text-gray-500 mt-3 font-semibold">
-            Enter your email and password to log in
+            Create your account to get started
           </p>
         </div>
 
@@ -89,12 +103,38 @@ const Login = () => {
 
           <div className="mb-4">
             <input
+              type="text"
+              id="username"
+              className="w-full px-4 py-2.5 rounded-full bg-white border border-gray-200 focus:outline-none focus:border-blue-500"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="mb-4">
+            <input
               type="password"
               id="password"
               className="w-full px-4 py-2.5 rounded-full bg-white border border-gray-200 focus:outline-none focus:border-blue-500"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="mb-4">
+            <input
+              type="password"
+              id="confirmPassword"
+              className="w-full px-4 py-2.5 rounded-full bg-white border border-gray-200 focus:outline-none focus:border-blue-500"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={isLoading}
             />
@@ -108,40 +148,19 @@ const Login = () => {
               }`}
               disabled={isLoading}
             >
-              {isLoading ? "Logging in..." : "Log in"}
+              {isLoading ? "Creating Account..." : "Sign up"}
             </button>
           </div>
         </form>
 
-        <div className="flex mt-3 text-left ml-2">
-          {/* Left side - Help links */}
-          <div className="flex-1 text-sm flex flex-col space-y-2">
-            <a
-              href="#"
-              className="text-white font-semibold hover:text-blue-700 text-base"
-            >
-              Any help?
-            </a>
-            <a
-              href="#"
-              className="text-white font-semibold hover:text-blue-700 text-base"
-            >
-              Forgot PW
-            </a>
-            <a
-              href="#"
-              className="text-white font-semibold hover:text-blue-700 text-base"
-            >
-              Policy
-            </a>
-          </div>
-          <div className="text-white self-center mr-2">
-            <span>Don't have an account? </span>
+        <div className="flex justify-between mt-6">
+          <div className="text-white">
+            Already have an account?{" "}
             <button
-              onClick={handleClickSignUp}
+              onClick={handleGoToLogin}
               className="text-white font-semibold hover:text-blue-200 underline"
             >
-              Sign up
+              Log in
             </button>
           </div>
         </div>
@@ -165,25 +184,25 @@ const Login = () => {
             className="text-4xl font-bold mb-4"
             style={{ textShadow: "0 2px 10px rgba(0, 0, 0, 0.8)" }}
           >
-            Smart Summary, Smarter Research
+            Join the Research Revolution
           </h2>
           <p
             className="text-xl mb-1"
             style={{ textShadow: "0 2px 6px rgba(0, 0, 0, 0.7)" }}
           >
-            Upload, Summarize, Understand.
+            Create your account today.
           </p>
           <p
             className="text-xl mb-1"
             style={{ textShadow: "0 2px 6px rgba(0, 0, 0, 0.7)" }}
           >
-            Let AI distill knowledge, so you can focus on insights.
+            Gain insights faster than ever before.
           </p>
           <p
             className="text-xl"
             style={{ textShadow: "0 2px 6px rgba(0, 0, 0, 0.7)" }}
           >
-            From paper to key points in seconds.
+            Revolutionize your research workflow.
           </p>
         </div>
       </div>
@@ -191,4 +210,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;

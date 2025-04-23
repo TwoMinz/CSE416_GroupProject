@@ -13,17 +13,16 @@ const getDynamoDBClient = () => {
   if (isDevelopment && useActualAwsResources) {
     return new AWS.DynamoDB.DocumentClient({
       region: process.env.AWS_REGION,
-      // AWS 자격 증명은 ~/.aws/credentials 파일이나 환경 변수에서 자동으로 가져옴
     });
   }
 
   // 일반 개발 환경 (로컬 DynamoDB 사용)
   if (isDevelopment) {
     return new AWS.DynamoDB.DocumentClient({
-      region: process.env.AWS_REGION || "localhost",
+      region: "localhost",
       endpoint: "http://localhost:8000",
-      accessKeyId: "LOCAL_ACCESS_KEY",
-      secretAccessKey: "LOCAL_SECRET_KEY",
+      accessKeyId: process.env.ACCESS_KEY,
+      secretAccessKey: process.env.SECRET_KEY,
     });
   }
 
@@ -45,8 +44,8 @@ const getDynamoDB = () => {
     return new AWS.DynamoDB({
       region: process.env.AWS_REGION || "localhost",
       endpoint: "http://localhost:8000",
-      accessKeyId: "LOCAL_ACCESS_KEY",
-      secretAccessKey: "LOCAL_SECRET_KEY",
+      accessKeyId: process.env.ACCESS_KEY,
+      secretAccessKey: process.env.SECRET_KEY,
     });
   }
 
@@ -68,8 +67,8 @@ const getS3Client = () => {
       region: process.env.AWS_REGION || "localhost",
       endpoint: "http://localhost:4569",
       s3ForcePathStyle: true,
-      accessKeyId: "LOCAL_ACCESS_KEY",
-      secretAccessKey: "LOCAL_SECRET_KEY",
+      accessKeyId: process.env.ACCESS_KEY,
+      secretAccessKey: process.env.SECRET_KEY,
     });
   }
 

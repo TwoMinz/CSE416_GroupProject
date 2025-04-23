@@ -5,21 +5,20 @@ require("dotenv").config();
 
 // Configure AWS
 const documentClient = new AWS.DynamoDB.DocumentClient({
-  region: process.env.AWS_REGION || "localhost",
-  endpoint:
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:8000"
-      : undefined,
-  accessKeyId:
-    process.env.NODE_ENV === "development" ? "LOCAL_ACCESS_KEY" : undefined,
-  secretAccessKey:
-    process.env.NODE_ENV === "development" ? "LOCAL_SECRET_KEY" : undefined,
+  region: process.env.AWS_REGION,
 });
 
 module.exports.handler = async (event) => {
   try {
     const { email, password, username } = JSON.parse(event.body);
-
+    console.log(
+      "Email: ",
+      email,
+      " password: ",
+      password,
+      " username: ",
+      username
+    );
     // Validate input
     if (!email || !password || !username) {
       return {

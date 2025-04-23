@@ -17,8 +17,10 @@ custom:
     start:
       port: 8000
       inMemory: true
-      migrate: true
-      seed: true
+      migrate: false
+      seed: false
+      docker: true
+      noStart: true
     seed:
       domain:
         sources:
@@ -32,6 +34,7 @@ custom:
     host: localhost
     port: 4569
     directory: ./local-s3-bucket
+    noStart: true
 
   # WebSocket settings
   websocketApiName: summaraize-websocket-api
@@ -41,7 +44,7 @@ provider:
   name: aws
   runtime: nodejs18.x
   stage: ${opt:stage, 'dev'}
-  region: ${opt:region, 'us-east-1'}
+  region: ${opt:region, 'ap-northeast-2'}
   environment:
     USERS_TABLE: summaraize-users-${self:provider.stage}
     PAPERS_TABLE: summaraize-papers-${self:provider.stage}
