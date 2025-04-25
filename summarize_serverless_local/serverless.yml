@@ -29,7 +29,7 @@ custom:
             sources: [./resources/dynamodb-seed/papers.json]
 
   # WebSocket settings
-  websocketApiName: summaraize-websocket-api
+  websocketApiName: paperProcessStatus
   websocketApiRouteSelectionExpression: $request.body.action
 
 provider:
@@ -38,10 +38,10 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'ap-northeast-2'}
   environment:
-    USERS_TABLE: summaraize-users-${self:provider.stage}
-    PAPERS_TABLE: summaraize-papers-${self:provider.stage}
-    CONNECTIONS_TABLE: summaraize-connections-${self:provider.stage}
-    PAPERS_BUCKET: cse416summaraize
+    USERS_TABLE: ${env:UERS_TABLE, ''}
+    PAPERS_TABLE: ${env:PAPERS_TABLE, ''}
+    CONNECTIONS_TABLE: ${env:CONNECTIONS_TABLE, ''}
+    PAPERS_BUCKET: ${env:PAPERS_BUCKET, ''}
     JWT_SECRET: ${env:JWT_SECRET, 'local-dev-secret'}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY, ''}
     GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID, ''}
@@ -212,21 +212,18 @@ functions:
     events:
       - websocket:
           route: $connect
-          routeKey: $connect
 
   wsDisconnect:
     handler: src/websocket/disconnect.handler
     events:
       - websocket:
           route: $disconnect
-          routeKey: $disconnect
 
   wsPaperProcessStatus:
     handler: src/websocket/paper-process-status.handler
     events:
       - websocket:
           route: paperProcessStatus
-          routeKey: $paperProcessStatus
 
 resources:
   Resources:
@@ -234,7 +231,7 @@ resources:
     UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:provider.environment.USERS_TABLE}
+        TableName: ${env:USERS_TABLE, ''}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: userId
@@ -255,7 +252,7 @@ resources:
     PapersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:provider.environment.PAPERS_TABLE}
+        TableName: ${env:PAPERS_TABLE, ''}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: paperId
@@ -276,7 +273,7 @@ resources:
     ConnectionsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:provider.environment.CONNECTIONS_TABLE}
+        TableName: ${env:CONNECTIONS_TABLE, ''}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: connectionId
