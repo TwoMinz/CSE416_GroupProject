@@ -10,7 +10,6 @@ plugins:
   - serverless-websockets-plugin
 
 custom:
-  # Set up local tables for development
   dynamodb:
     stages:
       - local
@@ -29,13 +28,6 @@ custom:
           - table: ${self:provider.environment.PAPERS_TABLE}
             sources: [./resources/dynamodb-seed/papers.json]
 
-  # Set up local S3 for development
-  s3:
-    host: localhost
-    port: 4569
-    directory: ./local-s3-bucket
-    noStart: true
-
   # WebSocket settings
   websocketApiName: summaraize-websocket-api
   websocketApiRouteSelectionExpression: $request.body.action
@@ -49,7 +41,7 @@ provider:
     USERS_TABLE: summaraize-users-${self:provider.stage}
     PAPERS_TABLE: summaraize-papers-${self:provider.stage}
     CONNECTIONS_TABLE: summaraize-connections-${self:provider.stage}
-    PAPERS_BUCKET: summaraize-papers-${self:provider.stage}
+    PAPERS_BUCKET: cse416summaraize
     JWT_SECRET: ${env:JWT_SECRET, 'local-dev-secret'}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY, ''}
     GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID, ''}
@@ -82,7 +74,7 @@ provider:
             - s3:PutObject
             - s3:GetObject
             - s3:DeleteObject
-          Resource: "arn:aws:s3:::${self:provider.environment.PAPERS_BUCKET}/*"
+          Resource: "arn:aws:s3:::cse416summaraize/*"
 
 functions:
   # Authentication Functions
@@ -176,6 +168,7 @@ functions:
       - s3:
           bucket: ${self:provider.environment.PAPERS_BUCKET}
           event: s3:ObjectCreated:*
+          existing: true
           rules:
             - suffix: .pdf
 
@@ -219,18 +212,21 @@ functions:
     events:
       - websocket:
           route: $connect
+          routeKey: $connect
 
   wsDisconnect:
     handler: src/websocket/disconnect.handler
     events:
       - websocket:
           route: $disconnect
+          routeKey: $disconnect
 
   wsPaperProcessStatus:
     handler: src/websocket/paper-process-status.handler
     events:
       - websocket:
           route: paperProcessStatus
+          routeKey: $paperProcessStatus
 
 resources:
   Resources:
@@ -297,22 +293,3 @@ resources:
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
-
-    # S3 Bucket
-    PapersBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${self:provider.environment.PAPERS_BUCKET}
-        CorsConfiguration:
-          CorsRules:
-            - AllowedHeaders:
-                - "*"
-              AllowedMethods:
-                - GET
-                - PUT
-                - POST
-                - DELETE
-                - HEAD
-              AllowedOrigins:
-                - "*"
-              MaxAge: 3600

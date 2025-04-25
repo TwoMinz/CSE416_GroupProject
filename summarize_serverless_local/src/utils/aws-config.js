@@ -12,7 +12,7 @@ const getDynamoDBClient = () => {
   // 개발 환경이지만 실제 AWS 리소스 사용 설정이 켜져 있는 경우
   if (isDevelopment && useActualAwsResources) {
     return new AWS.DynamoDB.DocumentClient({
-      region: process.env.AWS_REGION,
+      region: "ap-northeast-2",
     });
   }
 
@@ -28,7 +28,7 @@ const getDynamoDBClient = () => {
 
   // 프로덕션 환경
   return new AWS.DynamoDB.DocumentClient({
-    region: process.env.AWS_REGION,
+    region: "ap-northeast-2",
   });
 };
 
@@ -36,7 +36,7 @@ const getDynamoDBClient = () => {
 const getDynamoDB = () => {
   if (isDevelopment && useActualAwsResources) {
     return new AWS.DynamoDB({
-      region: process.env.AWS_REGION,
+      region: "ap-northeast-2",
     });
   }
 
@@ -50,7 +50,7 @@ const getDynamoDB = () => {
   }
 
   return new AWS.DynamoDB({
-    region: process.env.AWS_REGION,
+    region: "ap-northeast-2",
   });
 };
 
@@ -58,13 +58,13 @@ const getDynamoDB = () => {
 const getS3Client = () => {
   if (isDevelopment && useActualAwsResources) {
     return new AWS.S3({
-      region: process.env.AWS_REGION,
+      region: "ap-northeast-2",
     });
   }
 
   if (isDevelopment) {
     return new AWS.S3({
-      region: process.env.AWS_REGION || "localhost",
+      region: "ap-northeast-2",
       endpoint: "http://localhost:4569",
       s3ForcePathStyle: true,
       accessKeyId: process.env.ACCESS_KEY,
