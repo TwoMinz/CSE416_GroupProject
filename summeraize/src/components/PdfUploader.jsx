@@ -1,16 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import uploadIcon from "../assets/images/upload-icon.png";
 import { uploadPaperFile } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { simulatePaperStatusUpdate } from "../services/websocket";
+import {
+  initWebSocket,
+  addListener,
+  simulatePaperStatusUpdate,
+} from "../services/websocket";
+import config from "../config";
 
 const PdfUploader = ({ onFileUpload }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
+  const [uploadedPaperId, setUploadedPaperId] = useState(null);
   const { user, authenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Set up WebSocket listener for paper status updates
+  useEffect(() => {
+    if (authenticated && uploadedPaperId) {
+      // Initialize WebSocket connection
+      initWebSocket();
+
+      // Listen for status updates for this specific paper
+      const unsubscribe = addListener("PAPER_STATUS_UPDATE", (data) => {
+        if (data.paperId === uploadedPaperId) {
+          setUploadStatus({
+            status: data.status,
+            message: data.message || `Paper status: ${data.status}`,
+          });
+
+          // If processing is complete, navigate to the paper view
+          if (data.status === "completed") {
+            setTimeout(() => {
+              navigate("/bookstand", { state: { paperId: uploadedPaperId } });
+            }, 2000); // Give user time to see the completion message
+          }
+        }
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    }
+  }, [authenticated, uploadedPaperId, navigate]);
 
   // Function to handle drag enter event
   const handleDragEnter = (e) => {
@@ -77,6 +112,7 @@ const PdfUploader = ({ onFileUpload }) => {
   const handleFileUpload = async (file) => {
     if (!authenticated) {
       alert("Please log in to upload files");
+      navigate("/login");
       return;
     }
 
@@ -96,39 +132,40 @@ const PdfUploader = ({ onFileUpload }) => {
       );
 
       if (result.success) {
-        // For local development without actual websocket:
-        // Simulate processing status messages
-        simulatePaperStatusUpdate(
-          result.paperId,
-          "processing",
-          "Processing PDF..."
-        );
+        setUploadedPaperId(result.paperId);
 
-        setTimeout(() => {
+        // For local development without actual websocket:
+        if (config.isDevelopment) {
           simulatePaperStatusUpdate(
             result.paperId,
-            "analyzing",
-            "Analyzing paper content..."
+            "processing",
+            "Processing PDF..."
           );
 
           setTimeout(() => {
             simulatePaperStatusUpdate(
               result.paperId,
-              "summarizing",
-              "Generating summary..."
+              "analyzing",
+              "Analyzing paper content..."
             );
 
             setTimeout(() => {
               simulatePaperStatusUpdate(
                 result.paperId,
-                "completed",
-                "Summary ready!"
+                "summarizing",
+                "Generating summary..."
               );
-              // Navigate to paper view after completion
-              navigate("/bookstand", { state: { paperId: result.paperId } });
-            }, 5000);
-          }, 4000);
-        }, 3000);
+
+              setTimeout(() => {
+                simulatePaperStatusUpdate(
+                  result.paperId,
+                  "completed",
+                  "Summary ready!"
+                );
+              }, 5000);
+            }, 4000);
+          }, 3000);
+        }
       }
     } catch (error) {
       setUploadStatus({

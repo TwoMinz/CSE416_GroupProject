@@ -5,7 +5,12 @@ import MdFileReader from "../components/MdFileReader";
 import UserToggle from "../components/UserToggle";
 import { getPaperDetail, getContentUrl } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { requestPaperStatus, addListener } from "../services/websocket";
+import {
+  initWebSocket,
+  addListener,
+  requestPaperStatus,
+} from "../services/websocket";
+import config from "../config";
 
 const BookStand = () => {
   const navigate = useNavigate();
@@ -25,12 +30,20 @@ const BookStand = () => {
     const id = location.state?.paperId;
     if (id) {
       setPaperId(id);
+      console.log("Paper ID from location state:", id);
     } else {
-      // If no paperId, use a sample
+      console.log("No paper ID in location state, using sample content");
       setMdContent(sampleMarkdown);
       setLoading(false);
     }
   }, [location]);
+
+  // Initialize WebSocket when component mounts if authenticated
+  useEffect(() => {
+    if (authenticated) {
+      initWebSocket();
+    }
+  }, [authenticated]);
 
   // Load paper details and content when paperId is set
   useEffect(() => {
@@ -47,22 +60,27 @@ const BookStand = () => {
 
       try {
         const token = localStorage.getItem("summaraize-token");
+        console.log("Loading paper details for ID:", paperId);
 
         // Request paper details
         const detailResponse = await getPaperDetail(paperId, token);
+        console.log("Paper detail response:", detailResponse);
         setPaperDetail(detailResponse);
 
         // Request content URL
         const urlResponse = await getContentUrl(paperId, token);
         if (urlResponse.viewUrl) {
+          console.log("PDF URL received");
           setPdfUrl(urlResponse.viewUrl);
         }
 
         // Load the markdown summary if available
         if (detailResponse.summary) {
+          console.log("Summary available, setting content");
           setMdContent(detailResponse.summary);
         } else {
           // If no summary, show a processing message
+          console.log("No summary available, showing processing message");
           setMdContent(
             "# Processing paper...\n\nYour summary will appear here once processing is complete."
           );
@@ -84,11 +102,16 @@ const BookStand = () => {
 
   // Set up WebSocket listener for paper status updates
   useEffect(() => {
-    if (!paperId) return;
+    if (!authenticated || !paperId) return;
+
+    console.log("Setting up WebSocket listener for paper:", paperId);
 
     const unsubscribe = addListener("PAPER_STATUS_UPDATE", (data) => {
+      console.log("Received paper status update:", data);
+
       if (data.paperId === paperId) {
         setProcessingStatus(data.status);
+        console.log("Processing status updated:", data.status);
 
         // If processing is complete, reload the paper details
         if (data.status === "completed") {
@@ -98,6 +121,7 @@ const BookStand = () => {
               const detailResponse = await getPaperDetail(paperId, token);
 
               if (detailResponse.summary) {
+                console.log("Summary received, updating content");
                 setMdContent(detailResponse.summary);
               }
             } catch (error) {
@@ -111,9 +135,10 @@ const BookStand = () => {
     });
 
     return () => {
+      console.log("Cleaning up WebSocket listener");
       unsubscribe();
     };
-  }, [paperId]);
+  }, [paperId, authenticated]);
 
   const handleGoToHome = () => {
     navigate("/");

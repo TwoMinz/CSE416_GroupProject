@@ -9,6 +9,7 @@ const USER_KEY = "summaraize-user";
 // Function to handle user signup
 const signup = async (email, password, username) => {
   try {
+    console.log("Signing up user:", email);
     const response = await apiRequest("/api/auth/signup", "POST", {
       email,
       password,
@@ -25,6 +26,7 @@ const signup = async (email, password, username) => {
 // Function to handle user login
 const login = async (email, password) => {
   try {
+    console.log("Logging in user:", email);
     const response = await apiRequest("/api/auth/login", "POST", {
       email,
       password,
@@ -35,6 +37,7 @@ const login = async (email, password) => {
       localStorage.setItem(TOKEN_KEY, response.accessToken);
       localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
       localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+      console.log("Login successful");
     }
 
     return response;

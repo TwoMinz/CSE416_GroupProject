@@ -34,11 +34,13 @@ const initWebSocket = () => {
   isConnecting = true;
 
   try {
+    console.log(`Connecting to WebSocket at ${WS_ENDPOINT}`);
+
     // Connect with token for authentication
     socket = new WebSocket(`${WS_ENDPOINT}?token=${token}`);
 
     socket.onopen = () => {
-      console.log("WebSocket connected");
+      console.log("WebSocket connected successfully");
       isConnecting = false;
 
       // Clear any reconnect timer
@@ -51,6 +53,7 @@ const initWebSocket = () => {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log("WebSocket message received:", data);
         handleMessage(data);
       } catch (error) {
         console.error("WebSocket: Error parsing message", error);
@@ -62,8 +65,9 @@ const initWebSocket = () => {
       socket = null;
       isConnecting = false;
 
-      // Attempt to reconnect after a delay
+      // Attempt to reconnect after a delay (5 seconds)
       reconnectTimer = setTimeout(() => {
+        console.log("Attempting to reconnect WebSocket...");
         initWebSocket();
       }, 5000);
     };
@@ -191,9 +195,10 @@ const closeConnection = () => {
   listeners = {};
 };
 
-// A mock function for development to simulate WebSocket messages
+// A utility function for development to simulate WebSocket messages
+// This can be useful when testing the front-end without a working WebSocket connection
 const simulatePaperStatusUpdate = (paperId, status, message) => {
-  if (process.env.NODE_ENV === "development") {
+  if (config.isDevelopment) {
     setTimeout(() => {
       handleMessage({
         type: "PAPER_STATUS_UPDATE",

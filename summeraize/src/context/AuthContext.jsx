@@ -1,103 +1,132 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useContext, useEffect } from "react";
 import {
+  login as authLogin,
+  logout as authLogout,
+  refreshToken,
   getCurrentUser,
-  getToken,
-  login,
-  logout,
   isAuthenticated,
 } from "../services/auth";
 import { closeConnection } from "../services/websocket";
 
-// Create the auth context
+// Create context
 const AuthContext = createContext();
 
-// Context provider component
+// Custom hook to use the auth context
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
+
+// Provider component
 export const AuthProvider = ({ children }) => {
+  const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Initialize auth state from localStorage on app load
+  // Check authentication status on component mount
   useEffect(() => {
-    const initAuth = () => {
+    const checkAuth = async () => {
       try {
         if (isAuthenticated()) {
-          setUser(getCurrentUser());
+          const currentUser = getCurrentUser();
+          setUser(currentUser);
           setAuthenticated(true);
+
+          // Optionally refresh the token
+          try {
+            await refreshToken();
+          } catch (refreshError) {
+            console.warn(
+              "Token refresh failed, user may need to login again soon",
+              refreshError
+            );
+            // Continue with current token
+          }
         }
       } catch (error) {
-        console.error("Error initializing auth state:", error);
+        console.error("Auth check error:", error);
+        setError(error.message);
+        setAuthenticated(false);
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    initAuth();
+    checkAuth();
   }, []);
 
-  // Handle login
-  const handleLogin = async (email, password) => {
+  // Login function
+  const login = async (email, password) => {
     setLoading(true);
+    setError(null);
+
     try {
-      const response = await login(email, password);
-      setUser(response.user);
-      setAuthenticated(true);
-      return { success: true };
+      const response = await authLogin(email, password);
+
+      if (response.success) {
+        setUser(response.user);
+        setAuthenticated(true);
+        return { success: true };
+      } else {
+        setError(response.message || "Login failed");
+        return { success: false, error: response.message };
+      }
     } catch (error) {
       console.error("Login error:", error);
+      setError(error.message || "Login failed");
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle logout
-  const handleLogout = async () => {
+  // Logout function
+  const logout = async () => {
     setLoading(true);
+    setError(null);
+
     try {
-      await logout();
-      // Close WebSocket connection on logout
+      await authLogout();
+
+      // Close WebSocket connection
       closeConnection();
-      setUser(null);
+
       setAuthenticated(false);
+      setUser(null);
       return { success: true };
     } catch (error) {
       console.error("Logout error:", error);
+      setError(error.message || "Logout failed");
+
+      // Still clear user state even if API call fails
+      setAuthenticated(false);
+      setUser(null);
+
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
   };
 
-  // Update user info in context when it changes
+  // Update user function (for profile changes)
   const updateUser = (userData) => {
-    setUser(userData);
+    setUser((prevUser) => ({
+      ...prevUser,
+      ...userData,
+    }));
   };
 
-  // Provide the auth context to the app
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        authenticated,
-        loading,
-        login: handleLogin,
-        logout: handleLogout,
-        updateUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
+  // Context value
+  const value = {
+    authenticated,
+    user,
+    loading,
+    error,
+    login,
+    logout,
+    updateUser,
+  };
 
-// Custom hook for using the auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
-export default AuthContext;
