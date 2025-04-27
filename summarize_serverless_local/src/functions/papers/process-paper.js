@@ -1,35 +1,68 @@
 "use strict";
 const axios = require("axios");
-const fs = require("fs").promises;
-const path = require("path");
 const { OpenAI } = require("openai");
 const pdfParse = require("pdf-parse");
 const {
   getS3Client,
   getDynamoDBClient,
   getWebSocketClient,
-  isDevelopment,
-  useActualAwsResources,
 } = require("../../utils/aws-config");
 require("dotenv").config();
 
 // Send WebSocket message about paper processing status
 const sendStatusUpdate = async (userId, paperId, status, message) => {
   try {
-    const websocketAPI = getWebSocketClient();
+    // Get DynamoDB client
+    const documentClient = getDynamoDBClient();
 
-    // In development, just log the message
-    if (isDevelopment) {
-      console.log(
-        `[PROCESS-PAPER] [WEBSOCKET] Status update for paper ${paperId}: ${status} - ${message}`
-      );
+    // Get user's active connections
+    const connectionsResult = await documentClient
+      .query({
+        TableName: process.env.CONNECTIONS_TABLE,
+        IndexName: "UserIdIndex",
+        KeyConditionExpression: "userId = :userId",
+        ExpressionAttributeValues: {
+          ":userId": userId,
+        },
+      })
+      .promise();
+
+    if (!connectionsResult.Items || connectionsResult.Items.length === 0) {
+      console.log(`[PROCESS-PAPER] No active connections for user ${userId}`);
       return true;
     }
 
-    // In production, we would get active connections for this user from a table
-    // and send the message to each connection
-    // This is a placeholder for the actual implementation
-    // You would need to implement a DynamoDB query to get connections for the user
+    // Get WebSocket client
+    const websocketAPI = getWebSocketClient();
+
+    // Send message to all connections
+    for (const connection of connectionsResult.Items) {
+      try {
+        await websocketAPI
+          .postToConnection({
+            ConnectionId: connection.connectionId,
+            Data: JSON.stringify({
+              type: "PAPER_STATUS_UPDATE",
+              paperId,
+              status,
+              message,
+            }),
+          })
+          .promise();
+      } catch (wsError) {
+        if (wsError.statusCode === 410) {
+          // Stale connection, remove it
+          await documentClient
+            .delete({
+              TableName: process.env.CONNECTIONS_TABLE,
+              Key: { connectionId: connection.connectionId },
+            })
+            .promise();
+        } else {
+          console.error("WebSocket error:", wsError);
+        }
+      }
+    }
 
     return true;
   } catch (error) {
@@ -52,7 +85,7 @@ const extractTextFromPDF = async (pdfBuffer) => {
   }
 };
 
-// OpenAI API를 사용하여 구조화된 요약 생성
+// Generate structured summary with OpenAI
 const generateStructuredSummary = async (text, paperId, userId) => {
   try {
     await sendStatusUpdate(
@@ -62,13 +95,13 @@ const generateStructuredSummary = async (text, paperId, userId) => {
       "Analyzing paper content..."
     );
 
-    // OpenAI 클라이언트 초기화
+    // Initialize OpenAI client
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // 텍스트가 너무 길면 청크로 나눔
-    const chunks = chunkText(text, 12000); // OpenAI 토큰 한도에 맞게 조정
+    // Divide text into chunks if too long
+    const chunks = chunkText(text, 12000);
 
     await sendStatusUpdate(
       userId,
@@ -79,7 +112,7 @@ const generateStructuredSummary = async (text, paperId, userId) => {
 
     let paperData = {};
 
-    // 첫 번째 청크로 기본 정보 추출
+    // Extract basic info from first chunk
     await sendStatusUpdate(
       userId,
       paperId,
@@ -136,7 +169,7 @@ const generateStructuredSummary = async (text, paperId, userId) => {
 
     paperData = JSON.parse(initialResponse.choices[0].message.content);
 
-    // 모든 청크에서 핵심 포인트 추출
+    // Extract key points from all chunks
     let keyPoints = [];
     for (let i = 0; i < chunks.length; i++) {
       await sendStatusUpdate(
@@ -198,7 +231,7 @@ const generateStructuredSummary = async (text, paperId, userId) => {
       keyPoints = [...keyPoints, ...sectionPoints];
     }
 
-    // 마지막으로 전체 요약 및 인용 정보 생성
+    // Generate final summary and citation info
     await sendStatusUpdate(
       userId,
       paperId,
@@ -262,7 +295,7 @@ const generateStructuredSummary = async (text, paperId, userId) => {
 
     const finalSummary = JSON.parse(finalResponse.choices[0].message.content);
 
-    // 모든 데이터 결합
+    // Combine all data
     const completeSummary = {
       ...paperData,
       keyPoints,
@@ -282,24 +315,24 @@ const generateStructuredSummary = async (text, paperId, userId) => {
   }
 };
 
-// 텍스트를 청크로 나누는 유틸리티 함수
+// Utility function to split text into chunks
 const chunkText = (text, maxLength) => {
   const chunks = [];
   let currentChunk = "";
 
-  // 단락별로 분할
+  // Split by paragraphs
   const paragraphs = text.split(/\n\s*\n/);
 
   for (const paragraph of paragraphs) {
-    // 단락 자체가 maxLength보다 길면 강제 분할
+    // If paragraph itself is longer than maxLength, force split
     if (paragraph.length > maxLength) {
-      // 현재 청크가 있으면 추가
+      // Add current chunk if it exists
       if (currentChunk) {
         chunks.push(currentChunk);
         currentChunk = "";
       }
 
-      // 긴 단락 분할 (문장 단위)
+      // Split long paragraph by sentences
       const sentences = paragraph.split(/(?<=[.!?])\s+/);
       let sentenceChunk = "";
 
@@ -316,7 +349,7 @@ const chunkText = (text, maxLength) => {
         currentChunk = sentenceChunk;
       }
     }
-    // 현재 청크에 단락을 추가했을 때 최대 길이를 초과하는지 확인
+    // Check if adding paragraph to current chunk exceeds max length
     else if (currentChunk.length + paragraph.length + 2 > maxLength) {
       chunks.push(currentChunk);
       currentChunk = paragraph;
@@ -325,7 +358,7 @@ const chunkText = (text, maxLength) => {
     }
   }
 
-  // 마지막 청크 추가
+  // Add final chunk
   if (currentChunk) {
     chunks.push(currentChunk);
   }
@@ -333,7 +366,7 @@ const chunkText = (text, maxLength) => {
   return chunks;
 };
 
-// JSON 응답을 마크다운으로 변환
+// Convert summary JSON to markdown
 const convertToMarkdown = (summary) => {
   let markdown = `# Summary of "${summary.title}"\n\n`;
 
@@ -389,19 +422,6 @@ const saveMarkdownToS3 = async (paperId, userId, markdownContent) => {
       })
       .promise();
 
-    // 개발 환경에서는 로컬에도 저장
-    if (isDevelopment) {
-      const localS3Dir = path.join(
-        process.cwd(),
-        "local-s3-bucket",
-        process.env.PAPERS_BUCKET
-      );
-      const filePath = path.join(localS3Dir, markdownKey);
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, markdownContent);
-      console.log(`[PROCESS-PAPER] Saved markdown file locally at ${filePath}`);
-    }
-
     return markdownKey;
   } catch (error) {
     console.error("[PROCESS-PAPER] Error saving markdown to S3:", error);
@@ -424,19 +444,6 @@ const saveJsonToS3 = async (paperId, userId, jsonData) => {
       })
       .promise();
 
-    // 개발 환경에서는 로컬에도 저장
-    if (isDevelopment) {
-      const localS3Dir = path.join(
-        process.cwd(),
-        "local-s3-bucket",
-        process.env.PAPERS_BUCKET
-      );
-      const filePath = path.join(localS3Dir, jsonKey);
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2));
-      console.log(`[PROCESS-PAPER] Saved JSON file locally at ${filePath}`);
-    }
-
     return jsonKey;
   } catch (error) {
     console.error("[PROCESS-PAPER] Error saving JSON to S3:", error);
@@ -444,21 +451,21 @@ const saveJsonToS3 = async (paperId, userId, jsonData) => {
   }
 };
 
-// 메인 처리 함수
+// Main processing function
 module.exports.handler = async (event) => {
   try {
     console.log("[PROCESS-PAPER] Starting paper processing");
 
-    // 이벤트에서 정보 추출
+    // Extract information from event
     const body =
       typeof event.body === "string" ? JSON.parse(event.body) : event.body;
     const { paperId, fileKey, userId } = body;
 
-    // 필요한 클라이언트 가져오기
+    // Get clients
     const s3 = getS3Client();
     const documentClient = getDynamoDBClient();
 
-    // 상태 업데이트
+    // Update status
     await sendStatusUpdate(
       userId,
       paperId,
@@ -466,7 +473,7 @@ module.exports.handler = async (event) => {
       "Starting paper processing"
     );
 
-    // S3에서 PDF 파일 다운로드
+    // Download PDF file from S3
     await sendStatusUpdate(
       userId,
       paperId,
@@ -494,7 +501,7 @@ module.exports.handler = async (event) => {
         "Failed to download PDF file"
       );
 
-      // 실패 상태 업데이트
+      // Update failure status
       await documentClient
         .update({
           TableName: process.env.PAPERS_TABLE,
@@ -510,7 +517,7 @@ module.exports.handler = async (event) => {
       throw new Error(`Failed to download PDF file: ${error.message}`);
     }
 
-    // PDF에서 텍스트 추출
+    // Extract text from PDF
     await sendStatusUpdate(
       userId,
       paperId,
@@ -533,7 +540,7 @@ module.exports.handler = async (event) => {
         "Failed to extract text from PDF"
       );
 
-      // 실패 상태 업데이트
+      // Update failure status
       await documentClient
         .update({
           TableName: process.env.PAPERS_TABLE,
@@ -549,7 +556,7 @@ module.exports.handler = async (event) => {
       throw new Error(`Failed to extract text from PDF: ${error.message}`);
     }
 
-    // OpenAI API로 요약 생성
+    // Generate summary with OpenAI
     await sendStatusUpdate(
       userId,
       paperId,
@@ -573,7 +580,7 @@ module.exports.handler = async (event) => {
         "Failed to generate summary"
       );
 
-      // 실패 상태 업데이트
+      // Update failure status
       await documentClient
         .update({
           TableName: process.env.PAPERS_TABLE,
@@ -591,10 +598,10 @@ module.exports.handler = async (event) => {
       throw new Error(`Failed to generate summary: ${error.message}`);
     }
 
-    // JSON을 마크다운으로 변환
+    // Convert JSON to markdown
     const summaryMarkdown = convertToMarkdown(summaryJson);
 
-    // S3에 JSON 및 마크다운 파일 저장
+    // Save to S3
     await sendStatusUpdate(
       userId,
       paperId,
@@ -615,7 +622,7 @@ module.exports.handler = async (event) => {
         "Failed to save summary"
       );
 
-      // 실패 상태 업데이트
+      // Update failure status
       await documentClient
         .update({
           TableName: process.env.PAPERS_TABLE,
@@ -633,7 +640,7 @@ module.exports.handler = async (event) => {
       throw new Error(`Failed to save summary: ${error.message}`);
     }
 
-    // DynamoDB 업데이트
+    // Update DynamoDB
     try {
       await documentClient
         .update({
@@ -653,7 +660,7 @@ module.exports.handler = async (event) => {
       console.log("[PROCESS-PAPER] DynamoDB record updated successfully");
     } catch (error) {
       console.error("[PROCESS-PAPER] Error updating DynamoDB record:", error);
-      // 이 부분에서 에러가 발생해도 파일은 이미 S3에 저장되었으므로, 완전 실패로 처리하지 않음
+      // Files are already saved to S3, so not marking as complete failure
       await sendStatusUpdate(
         userId,
         paperId,
@@ -663,7 +670,7 @@ module.exports.handler = async (event) => {
       throw new Error(`Failed to update database record: ${error.message}`);
     }
 
-    // 완료 상태 업데이트
+    // Send completion status
     await sendStatusUpdate(
       userId,
       paperId,
@@ -692,7 +699,7 @@ module.exports.handler = async (event) => {
       body: JSON.stringify({
         success: false,
         message: "Error processing paper",
-        error: isDevelopment ? error.message : "Internal server error",
+        error: error.message,
       }),
     };
   }

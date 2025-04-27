@@ -1,24 +1,13 @@
-const AWS = require("aws-sdk");
+"use strict";
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
+const { getDynamoDBClient } = require("../../utils/aws-config");
 require("dotenv").config();
-
-// Configure AWS
-const documentClient = new AWS.DynamoDB.DocumentClient({
-  region: "ap-northeast-2",
-});
 
 module.exports.handler = async (event) => {
   try {
     const { email, password, username } = JSON.parse(event.body);
-    console.log(
-      "Email: ",
-      email,
-      " password: ",
-      password,
-      " username: ",
-      username
-    );
+    console.log(`Signup request for email: ${email}, username: ${username}`);
 
     // Validate input
     if (!email || !password || !username) {
@@ -34,6 +23,9 @@ module.exports.handler = async (event) => {
         }),
       };
     }
+
+    // Get DynamoDB client
+    const documentClient = getDynamoDBClient();
 
     // Check if user already exists
     const existingUser = await documentClient
@@ -87,7 +79,8 @@ module.exports.handler = async (event) => {
       .promise();
 
     // Remove password from response
-    delete newUser.password;
+    const userResponse = { ...newUser };
+    delete userResponse.password;
 
     return {
       statusCode: 201,
@@ -98,7 +91,7 @@ module.exports.handler = async (event) => {
       body: JSON.stringify({
         success: true,
         message: "User created successfully",
-        user: newUser,
+        user: userResponse,
       }),
     };
   } catch (error) {

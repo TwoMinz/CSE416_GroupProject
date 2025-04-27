@@ -1,20 +1,7 @@
 "use strict";
-const AWS = require("aws-sdk");
 const jwt = require("jsonwebtoken");
+const { getDynamoDBClient } = require("../utils/aws-config");
 require("dotenv").config();
-
-// Configure DynamoDB for storing connections
-const documentClient = new AWS.DynamoDB.DocumentClient({
-  region: process.env.AWS_REGION || "localhost",
-  endpoint:
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:8000"
-      : undefined,
-  accessKeyId:
-    process.env.NODE_ENV === "development" ? "LOCAL_ACCESS_KEY" : undefined,
-  secretAccessKey:
-    process.env.NODE_ENV === "development" ? "LOCAL_SECRET_KEY" : undefined,
-});
 
 // Verify JWT token
 const verifyToken = (token) => {
@@ -39,12 +26,6 @@ module.exports.handler = async (event) => {
     const token = queryParams.token;
 
     if (!token) {
-      // For development, allow connections without tokens
-      if (process.env.NODE_ENV === "development") {
-        console.log("Development mode: Allowing connection without token");
-        return { statusCode: 200, body: "Connected (development mode)" };
-      }
-
       return { statusCode: 401, body: "Unauthorized" };
     }
 
@@ -59,10 +40,13 @@ module.exports.handler = async (event) => {
 
     const userId = decoded.userId;
 
+    // Get DynamoDB client
+    const documentClient = getDynamoDBClient();
+
     // Store connection in DynamoDB
     await documentClient
       .put({
-        TableName: process.env.CONNECTIONS_TABLE || "summaraize-connections",
+        TableName: process.env.CONNECTIONS_TABLE,
         Item: {
           connectionId,
           userId,

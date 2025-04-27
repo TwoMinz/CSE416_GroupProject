@@ -1,24 +1,11 @@
 "use strict";
-const AWS = require("aws-sdk");
 const jwt = require("jsonwebtoken");
+const {
+  getDynamoDBClient,
+  getWebSocketClient,
+  getLambdaClient,
+} = require("../../utils/aws-config");
 require("dotenv").config();
-
-// Configure AWS
-const documentClient = new AWS.DynamoDB.DocumentClient({
-  region: process.env.AWS_REGION || "localhost",
-  endpoint:
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:8000"
-      : undefined,
-  accessKeyId:
-    process.env.NODE_ENV === "development" ? "LOCAL_ACCESS_KEY" : undefined,
-  secretAccessKey:
-    process.env.NODE_ENV === "development" ? "LOCAL_SECRET_KEY" : undefined,
-});
-
-// Setup WebSocket API
-const ApiGatewayManagementApi = AWS.ApiGatewayManagementApi;
-let websocketAPI;
 
 // Verify JWT token
 const verifyToken = (token) => {
@@ -26,20 +13,70 @@ const verifyToken = (token) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return decoded;
   } catch (error) {
-    throw new Error("Invalid token");
+    throw new Error(`Invalid token: ${error.message}`);
+  }
+};
+
+// Send WebSocket message
+const sendWebSocketMessage = async (connectionId, message) => {
+  try {
+    const websocketAPI = getWebSocketClient();
+
+    await websocketAPI
+      .postToConnection({
+        ConnectionId: connectionId,
+        Data: JSON.stringify(message),
+      })
+      .promise();
+
+    return true;
+  } catch (error) {
+    console.error(`[CONFIRM-UPLOAD] Error sending WebSocket message:`, error);
+    return false;
+  }
+};
+
+// Trigger paper processing
+const triggerPaperProcessing = async (paperId, fileKey, userId) => {
+  const lambda = getLambdaClient();
+
+  try {
+    await lambda
+      .invoke({
+        FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-processPaper`,
+        InvocationType: "Event",
+        Payload: JSON.stringify({
+          body: JSON.stringify({
+            paperId,
+            fileKey,
+            userId,
+          }),
+        }),
+      })
+      .promise();
+
+    return true;
+  } catch (error) {
+    console.error("[CONFIRM-UPLOAD] Error invoking Lambda function:", error);
+    return false;
   }
 };
 
 module.exports.handler = async (event) => {
   try {
+    console.log("[CONFIRM-UPLOAD] Processing upload confirmation");
+
+    // Get DynamoDB client
+    const documentClient = getDynamoDBClient();
+
     // Parse request body
-    const { paperId, fileKey, uploadSuccess, fileName } = JSON.parse(
-      event.body
-    );
+    const body =
+      typeof event.body === "string" ? JSON.parse(event.body) : event.body;
+    const { paperId, fileKey, uploadSuccess, fileName } = body;
 
     // Extract authorization token
     const authHeader =
-      event.headers.Authorization || event.headers.authorization;
+      event.headers?.Authorization || event.headers?.authorization;
     if (!authHeader) {
       return {
         statusCode: 401,
@@ -61,6 +98,7 @@ module.exports.handler = async (event) => {
     try {
       decoded = verifyToken(token);
     } catch (error) {
+      console.error("[CONFIRM-UPLOAD] Token verification failed:", error);
       return {
         statusCode: 401,
         headers: {
@@ -75,6 +113,9 @@ module.exports.handler = async (event) => {
     }
 
     const userId = decoded.userId;
+    console.log(
+      `[CONFIRM-UPLOAD] Confirmation from user ${userId} for paper ${paperId}`
+    );
 
     // Validate input
     if (!paperId || !fileKey || uploadSuccess === undefined) {
@@ -92,30 +133,36 @@ module.exports.handler = async (event) => {
     }
 
     // Get paper record to verify ownership
-    const paperResult = await documentClient
-      .get({
-        TableName: process.env.PAPERS_TABLE,
-        Key: {
-          paperId,
-        },
-      })
-      .promise();
+    let paper;
+    try {
+      const paperResult = await documentClient
+        .get({
+          TableName: process.env.PAPERS_TABLE,
+          Key: {
+            paperId,
+          },
+        })
+        .promise();
 
-    if (!paperResult.Item) {
-      return {
-        statusCode: 404,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Credentials": true,
-        },
-        body: JSON.stringify({
-          success: false,
-          message: "Paper not found",
-        }),
-      };
+      if (!paperResult.Item) {
+        return {
+          statusCode: 404,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": true,
+          },
+          body: JSON.stringify({
+            success: false,
+            message: "Paper not found",
+          }),
+        };
+      }
+
+      paper = paperResult.Item;
+    } catch (error) {
+      console.error("[CONFIRM-UPLOAD] Error retrieving paper record:", error);
+      throw new Error(`Failed to retrieve paper: ${error.message}`);
     }
-
-    const paper = paperResult.Item;
 
     // Verify paper ownership
     if (paper.userId !== userId) {
@@ -153,41 +200,71 @@ module.exports.handler = async (event) => {
       expressionAttributeValues[":status"] = "failed";
     }
 
-    await documentClient
-      .update({
-        TableName: process.env.PAPERS_TABLE,
-        Key: {
-          paperId,
-        },
-        UpdateExpression: updateExpression,
-        ExpressionAttributeValues: expressionAttributeValues,
-        ReturnValues: "ALL_NEW",
-      })
-      .promise();
+    try {
+      await documentClient
+        .update({
+          TableName: process.env.PAPERS_TABLE,
+          Key: {
+            paperId,
+          },
+          UpdateExpression: updateExpression,
+          ExpressionAttributeValues: expressionAttributeValues,
+          ReturnValues: "ALL_NEW",
+        })
+        .promise();
+      console.log(
+        `[CONFIRM-UPLOAD] Updated paper status to: ${
+          uploadSuccess ? "processing" : "failed"
+        }`
+      );
+    } catch (error) {
+      console.error("[CONFIRM-UPLOAD] Error updating paper status:", error);
+      throw new Error(`Failed to update paper status: ${error.message}`);
+    }
 
     // For successful uploads, trigger paper processing
     if (uploadSuccess) {
-      // In a real implementation, you would trigger the Lambda function
-      // that processes the PDF and generates summaries
-      // For development, we'll just simulate this with a success message
+      console.log("[CONFIRM-UPLOAD] Upload successful, triggering processing");
 
       // In production, this would be handled by the S3 trigger
-      // or you could directly invoke the Lambda function here
+      // But we'll trigger it manually to ensure processing starts
+      const processingTriggered = await triggerPaperProcessing(
+        paperId,
+        fileKey,
+        userId
+      );
+
+      if (!processingTriggered) {
+        console.warn("[CONFIRM-UPLOAD] Failed to trigger paper processing");
+      }
 
       // Get websocket connections for this user (if any) to send status updates
       try {
-        // Initialize WebSocket API (would only be relevant in production)
-        if (process.env.NODE_ENV !== "development") {
-          websocketAPI = new ApiGatewayManagementApi({
-            apiVersion: "2018-11-29",
-            endpoint: process.env.WEBSOCKET_API_URL,
-          });
+        // Get user's active connections
+        const connectionsResult = await documentClient
+          .query({
+            TableName: process.env.CONNECTIONS_TABLE,
+            IndexName: "UserIdIndex",
+            KeyConditionExpression: "userId = :userId",
+            ExpressionAttributeValues: {
+              ":userId": userId,
+            },
+          })
+          .promise();
 
-          // In production, you would get connections from a table and send updates
-          // This is just a placeholder for the real implementation
+        // Send status update to all user's connections
+        if (connectionsResult.Items && connectionsResult.Items.length > 0) {
+          for (const connection of connectionsResult.Items) {
+            await sendWebSocketMessage(connection.connectionId, {
+              type: "PAPER_STATUS_UPDATE",
+              paperId,
+              status: "processing",
+              message: "Paper processing started",
+            });
+          }
         }
       } catch (error) {
-        console.error("WebSocket error:", error);
+        console.error("[CONFIRM-UPLOAD] WebSocket error:", error);
         // Continue even if WebSocket update fails
       }
     }
@@ -208,7 +285,7 @@ module.exports.handler = async (event) => {
       }),
     };
   } catch (error) {
-    console.error("Error confirming upload:", error);
+    console.error("[CONFIRM-UPLOAD] Unhandled error:", error);
 
     return {
       statusCode: 500,
@@ -219,6 +296,7 @@ module.exports.handler = async (event) => {
       body: JSON.stringify({
         success: false,
         message: "Error confirming upload",
+        error: error.message,
       }),
     };
   }

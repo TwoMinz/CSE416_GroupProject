@@ -1,9 +1,6 @@
 "use strict";
 const AWS = require("aws-sdk");
-const {
-  getDynamoDBClient,
-  getWebSocketClient,
-} = require("../utils/aws-config");
+const { getDynamoDBClient } = require("../utils/aws-config");
 require("dotenv").config();
 
 module.exports.handler = async (event) => {
@@ -28,7 +25,7 @@ module.exports.handler = async (event) => {
     // Get the connection record to find userId
     const connectionResult = await documentClient
       .get({
-        TableName: process.env.CONNECTIONS_TABLE || "connection",
+        TableName: process.env.CONNECTIONS_TABLE,
         Key: { connectionId },
       })
       .promise();
@@ -42,7 +39,7 @@ module.exports.handler = async (event) => {
     // Get paper info from DynamoDB
     const paperResult = await documentClient
       .get({
-        TableName: process.env.CONNECTIONS_TABLE,
+        TableName: process.env.PAPERS_TABLE,
         Key: { paperId },
       })
       .promise();

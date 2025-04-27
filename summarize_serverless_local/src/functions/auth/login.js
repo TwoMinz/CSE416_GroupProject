@@ -1,21 +1,9 @@
-const AWS = require("aws-sdk");
+"use strict";
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
+const { getDynamoDBClient } = require("../../utils/aws-config");
 require("dotenv").config();
-
-// Configure AWS
-const documentClient = new AWS.DynamoDB.DocumentClient({
-  region: process.env.AWS_REGION || "localhost",
-  endpoint:
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:8000"
-      : undefined,
-  accessKeyId:
-    process.env.NODE_ENV === "development" ? "LOCAL_ACCESS_KEY" : undefined,
-  secretAccessKey:
-    process.env.NODE_ENV === "development" ? "LOCAL_SECRET_KEY" : undefined,
-});
 
 module.exports.handler = async (event) => {
   try {
@@ -35,6 +23,9 @@ module.exports.handler = async (event) => {
         }),
       };
     }
+
+    // Get DynamoDB client
+    const documentClient = getDynamoDBClient();
 
     // Find user by email
     const userResult = await documentClient
@@ -104,8 +95,8 @@ module.exports.handler = async (event) => {
       { expiresIn: refreshExpiresIn }
     );
 
-    // Store refresh token (in a production environment, you would store this in a separate table)
-    // For this example, we'll skip this step to keep it simple
+    // Store refresh token in a separate table if needed
+    // This would be implemented in a production environment
 
     // Create user response object without password
     const userResponse = {
