@@ -23,6 +23,7 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    console.log("Starting sign up process...");
 
     // Validation
     if (!email || !password || !username) {
@@ -45,8 +46,8 @@ const Signup = () => {
     try {
       // Call the signup function from auth service
       const result = await signup(email, password, username);
-
-      if (result.success) {
+      console.log(result);
+      if (result) {
         // Redirect to login page after successful signup
         navigate("/login", {
           state: { message: "Account created successfully! Please log in." },

@@ -7,9 +7,10 @@ const REFRESH_TOKEN_KEY = "summaraize-refresh-token";
 const USER_KEY = "summaraize-user";
 
 // Function to handle user signup
+// In src/services/auth.js - enhance the signup function
 const signup = async (email, password, username) => {
   try {
-    console.log("Signing up user:", email);
+    console.log("Signup request details:", { email, username }); // Log request details
     const response = await apiRequest("/api/auth/signup", "POST", {
       email,
       password,
@@ -18,7 +19,22 @@ const signup = async (email, password, username) => {
 
     return response;
   } catch (error) {
+    // Enhanced error logging
     console.error("Signup Error:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
+
+    // Check if it's a network error
+    if (
+      error.name === "TypeError" &&
+      error.message.includes("Failed to fetch")
+    ) {
+      console.error("Network error - API server might be down or unreachable");
+    }
+
     throw error;
   }
 };

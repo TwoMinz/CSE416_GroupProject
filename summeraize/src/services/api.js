@@ -20,7 +20,6 @@ const getHeaders = (token = null) => {
 // Generic API request function
 const apiRequest = async (endpoint, method, data = null, token = null) => {
   try {
-    console.log(API_BASE_URL);
     const url = `${API_BASE_URL}${endpoint}`;
     const options = {
       method,
