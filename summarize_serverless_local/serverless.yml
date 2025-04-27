@@ -10,16 +10,12 @@ plugins:
   - serverless-websockets-plugin
 
 custom:
-  dynamodb:
-    stages:
-      - local
-    start:
-      port: 8000
-      inMemory: true
-      migrate: false
-      seed: false
-      docker: true
-      noStart: true
+  dotenv:
+    include:
+      - USERS_TABLE
+      - PAPERS_TABLE
+      - CONNECTIONS_TABLE
+      - PAPERS_BUCKET
     seed:
       domain:
         sources:
@@ -28,21 +24,16 @@ custom:
           - table: ${self:provider.environment.PAPERS_TABLE}
             sources: [./resources/dynamodb-seed/papers.json]
 
-  # WebSocket settings
-  websocketApiName: paperProcessStatus
-  websocketApiRouteSelectionExpression: $request.body.action
-
 provider:
   name: aws
   runtime: nodejs18.x
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'ap-northeast-2'}
   environment:
-    USERS_TABLE: ${env:UERS_TABLE, ''}
+    USERS_TABLE: ${env:USERS_TABLE, ''}
     PAPERS_TABLE: ${env:PAPERS_TABLE, ''}
     CONNECTIONS_TABLE: ${env:CONNECTIONS_TABLE, ''}
     PAPERS_BUCKET: ${env:PAPERS_BUCKET, ''}
-    JWT_SECRET: ${env:JWT_SECRET, 'local-dev-secret'}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY, ''}
     GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID, ''}
     GOOGLE_CLIENT_SECRET: ${env:GOOGLE_CLIENT_SECRET, ''}
@@ -74,7 +65,7 @@ provider:
             - s3:PutObject
             - s3:GetObject
             - s3:DeleteObject
-          Resource: "arn:aws:s3:::cse416summaraize/*"
+          Resource: "arn:aws:s3:::${self:provider.environment.PAPERS_BUCKET}/*"
 
 functions:
   # Authentication Functions
@@ -168,7 +159,6 @@ functions:
       - s3:
           bucket: ${self:provider.environment.PAPERS_BUCKET}
           event: s3:ObjectCreated:*
-          existing: true
           rules:
             - suffix: .pdf
 
@@ -224,69 +214,3 @@ functions:
     events:
       - websocket:
           route: paperProcessStatus
-
-resources:
-  Resources:
-    # DynamoDB Tables
-    UsersTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${env:USERS_TABLE, ''}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: userId
-            AttributeType: S
-          - AttributeName: email
-            AttributeType: S
-        KeySchema:
-          - AttributeName: userId
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-          - IndexName: EmailIndex
-            KeySchema:
-              - AttributeName: email
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-
-    PapersTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${env:PAPERS_TABLE, ''}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: paperId
-            AttributeType: S
-          - AttributeName: userId
-            AttributeType: S
-        KeySchema:
-          - AttributeName: paperId
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-          - IndexName: UserIdIndex
-            KeySchema:
-              - AttributeName: userId
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-
-    ConnectionsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${env:CONNECTIONS_TABLE, ''}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: connectionId
-            AttributeType: S
-          - AttributeName: userId
-            AttributeType: S
-        KeySchema:
-          - AttributeName: connectionId
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-          - IndexName: UserIdIndex
-            KeySchema:
-              - AttributeName: userId
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL

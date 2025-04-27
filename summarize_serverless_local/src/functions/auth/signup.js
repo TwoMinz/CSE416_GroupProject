@@ -19,6 +19,7 @@ module.exports.handler = async (event) => {
       " username: ",
       username
     );
+
     // Validate input
     if (!email || !password || !username) {
       return {
