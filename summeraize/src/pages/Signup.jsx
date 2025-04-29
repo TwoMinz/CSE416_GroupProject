@@ -1,195 +1,213 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import researchImage from "../assets/images/student-research.jpg";
+import { signup } from "../services/auth";
 
 const Signup = () => {
   const navigate = useNavigate();
-  const [nickname, setNickname] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [language, setLanguage] = useState('English');
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleBackClick = () => {
-    navigate('/');
+  const handleClickWebLogo = () => {
+    navigate("/");
   };
 
-  const handleNicknameChange = (e) => {
-    setNickname(e.target.value);
+  const handleGoToLogin = () => {
+    navigate("/login");
   };
 
-  const handleEmailChange = (e) => {
-    setEmail(e.target.value);
-  };
-
-  const handlePasswordChange = (e) => {
-    setPassword(e.target.value);
-  };
-
-  const handleConfirmPasswordChange = (e) => {
-    setConfirmPassword(e.target.value);
-  };
-
-  const handleLanguageChange = (e) => {
-    setLanguage(e.target.value);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 회원가입 로직 구현
-    console.log('Signup data:', { nickname, email, password, language });
-    // 성공 시 홈 또는 로그인 페이지로 이동
-    navigate('/');
+    setError("");
+    console.log("Starting sign up process...");
+
+    // Validation
+    if (!email || !password || !username) {
+      setError("All fields are required");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Call the signup function from auth service
+      const result = await signup(email, password, username);
+
+      if (result && result.success) {
+        // Redirect to login page after successful signup
+        navigate("/login", {
+          state: { message: "Account created successfully! Please log in." },
+        });
+      } else {
+        setError(result?.message || "Signup failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      setError(
+        error?.message || "An error occurred during signup. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-100 to-blue-500">
-      {/* Header with Back Button */}
-      <div className="p-5 flex items-center">
-        <button 
-          onClick={handleBackClick}
-          className="text-blue-600 font-semibold flex items-center"
-        >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="h-5 w-5 mr-1" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
+    <div className="min-h-screen flex bg-gradient-to-b from-blue-100 to-blue-500">
+      {/* Left side - Signup Form */}
+      <div className="w-full md:w-2/5 p-8 md:p-12 flex flex-col justify-center">
+        <div className="mb-4 text-left">
+          <h2
+            onClick={handleClickWebLogo}
+            className="text-blue-600 text-xl font-bold cursor-pointer hover:text-blue-800 transition-colors inline-block"
+            title="Back to Home"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
-        <h1 className="text-2xl font-bold text-center flex-1">Sign Up</h1>
-        <div className="w-20"></div> {/* Spacer for centering the title */}
-      </div>
+            SummarAIze
+          </h2>
+          <h1 className="text-gray-800 text-4xl font-bold">Sign up</h1>
+          <p className="text-gray-500 mt-3 font-semibold">
+            Create your account to get started
+          </p>
+        </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex justify-center items-center p-4">
-        <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
-          <div className="p-8 flex flex-col items-center">
-            {/* Profile Photo */}
-            <div className="relative mb-6">
-              <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center">
-                {/* Placeholder for profile image */}
-                <span className="text-gray-500 font-medium">Add Photo</span>
-              </div>
-              <button className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 shadow-md hover:bg-blue-600 transition-colors">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-5 w-5" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            </div>
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
 
-            {/* Sign Up Form */}
-            <form onSubmit={handleSubmit} className="w-full space-y-6">
-              {/* Nickname Field */}
-              <div className="flex items-center">
-                <label className="font-semibold text-gray-700 text-lg w-1/3">Nickname:</label>
-                <div className="w-2/3">
-                  <input 
-                    type="text" 
-                    value={nickname} 
-                    onChange={handleNicknameChange}
-                    className="border border-gray-200 rounded-xl py-3 px-4 text-gray-700 w-full focus:outline-none focus:border-blue-500"
-                    placeholder="Enter nickname"
-                    required
-                  />
-                </div>
-              </div>
+        <form onSubmit={handleSubmit} className="mt-2">
+          <div className="mb-4">
+            <input
+              type="email"
+              id="email"
+              className="w-full px-4 py-2.5 rounded-full bg-white border border-gray-200 focus:outline-none focus:border-blue-500"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
 
-              {/* Email Field */}
-              <div className="flex items-center">
-                <label className="font-semibold text-gray-700 text-lg w-1/3">Email:</label>
-                <div className="w-2/3">
-                  <input 
-                    type="email" 
-                    value={email} 
-                    onChange={handleEmailChange}
-                    className="border border-gray-200 rounded-xl py-3 px-4 text-gray-700 w-full focus:outline-none focus:border-blue-500"
-                    placeholder="Enter email"
-                    required
-                  />
-                </div>
-              </div>
+          <div className="mb-4">
+            <input
+              type="text"
+              id="username"
+              className="w-full px-4 py-2.5 rounded-full bg-white border border-gray-200 focus:outline-none focus:border-blue-500"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
 
-              {/* Password Field */}
-              <div className="flex items-center">
-                <label className="font-semibold text-gray-700 text-lg w-1/3">Password:</label>
-                <div className="w-2/3">
-                  <input 
-                    type="password" 
-                    value={password} 
-                    onChange={handlePasswordChange}
-                    className="border border-gray-200 rounded-xl py-3 px-4 text-gray-700 w-full focus:outline-none focus:border-blue-500"
-                    placeholder="Enter password"
-                    required
-                  />
-                </div>
-              </div>
+          <div className="mb-4">
+            <input
+              type="password"
+              id="password"
+              className="w-full px-4 py-2.5 rounded-full bg-white border border-gray-200 focus:outline-none focus:border-blue-500"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
 
-              {/* Confirm Password Field */}
-              <div className="flex items-center">
-                <label className="font-semibold text-gray-700 text-lg w-1/3">Confirm:</label>
-                <div className="w-2/3">
-                  <input 
-                    type="password" 
-                    value={confirmPassword} 
-                    onChange={handleConfirmPasswordChange}
-                    className="border border-gray-200 rounded-xl py-3 px-4 text-gray-700 w-full focus:outline-none focus:border-blue-500"
-                    placeholder="Confirm password"
-                    required
-                  />
-                </div>
-              </div>
+          <div className="mb-4">
+            <input
+              type="password"
+              id="confirmPassword"
+              className="w-full px-4 py-2.5 rounded-full bg-white border border-gray-200 focus:outline-none focus:border-blue-500"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
 
-              {/* Language Field */}
-              <div className="flex items-center">
-                <label className="font-semibold text-gray-700 text-lg w-1/3">Language:</label>
-                <div className="w-2/3">
-                  <div className="relative">
-                    <select 
-                      value={language}
-                      onChange={handleLanguageChange}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl w-full appearance-none cursor-pointer text-center pr-8 shadow-sm transition-colors font-medium"
-                    >
-                      <option value="Korean">Korean</option>
-                      <option value="English">English</option>
-                      <option value="Japanese">Japanese</option>
-                      <option value="Chinese">Chinese</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white">
-                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="flex-1 flex justify-end">
+            <button
+              type="submit"
+              className={`w-1/2 bg-blue-600 text-white py-3 rounded-full font-medium hover:bg-blue-700 transition-colors ${
+                isLoading ? "opacity-70 cursor-not-allowed" : ""
+              }`}
+              disabled={isLoading}
+            >
+              {isLoading ? "Creating Account..." : "Sign up"}
+            </button>
+          </div>
+        </form>
 
-              {/* Submit Button */}
-              <div className="pt-4 flex justify-center">
-                <button 
-                  type="submit"
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-8 rounded-xl shadow-md transition-colors w-2/3"
-                >
-                  Create Account
-                </button>
-              </div>
-            </form>
+        <div className="flex justify-between mt-6">
+          <div className="text-white">
+            Already have an account?{" "}
+            <button
+              onClick={handleGoToLogin}
+              className="text-white font-semibold hover:text-blue-200 underline"
+            >
+              Log in
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="p-5 text-center">
-        <h2 className="text-2xl font-bold text-white">SummarAIze</h2>
+      {/* Right side - Image and Text */}
+      <div className="hidden m-3 md:flex md:w-3/5 bg-blue-200 relative rounded-2xl shadow-lg overflow-hidden">
+        {/* Overlay with semi-transparent gradient */}
+        <div className="absolute inset-0 bg-black bg-opacity-10"></div>
+
+        {/* Background image */}
+        <img
+          src={researchImage}
+          alt="Student researching"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+
+        {/* Text overlay */}
+        <div className="absolute bottom-12 left-12 right-12 text-white text-left">
+          <h2
+            className="text-4xl font-bold mb-4"
+            style={{ textShadow: "0 2px 10px rgba(0, 0, 0, 0.8)" }}
+          >
+            Join the Research Revolution
+          </h2>
+          <p
+            className="text-xl mb-1"
+            style={{ textShadow: "0 2px 6px rgba(0, 0, 0, 0.7)" }}
+          >
+            Create your account today.
+          </p>
+          <p
+            className="text-xl mb-1"
+            style={{ textShadow: "0 2px 6px rgba(0, 0, 0, 0.7)" }}
+          >
+            Gain insights faster than ever before.
+          </p>
+          <p
+            className="text-xl"
+            style={{ textShadow: "0 2px 6px rgba(0, 0, 0, 0.7)" }}
+          >
+            Revolutionize your research workflow.
+          </p>
+        </div>
       </div>
     </div>
   );
