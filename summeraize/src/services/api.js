@@ -156,6 +156,14 @@ const uploadPaperFile = async (file, token, userId, onProgress) => {
     // Step 1: Request upload URL
     onProgress &&
       onProgress({ status: "requesting", message: "Requesting upload URL..." });
+
+      console.log(      
+        "\nfile name: " + file.name,
+        "\nfile type: " + file.type,
+        "\nfile size: " + file.size,
+        "\nfile token: " + token
+      )
+        
     const uploadRequest = await requestFileUpload(
       file.name,
       file.type,

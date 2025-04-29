@@ -110,6 +110,7 @@ const PdfUploader = ({ onFileUpload }) => {
 
   // Handle the file upload process
   const handleFileUpload = async (file) => {
+    console.log("----d여기니")
     if (!authenticated) {
       alert("Please log in to upload files");
       navigate("/login");
