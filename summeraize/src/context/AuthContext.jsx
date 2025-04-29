@@ -2,7 +2,6 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import {
   login as authLogin,
   logout as authLogout,
-  refreshToken,
   getCurrentUser,
   isAuthenticated,
 } from "../services/auth";
@@ -31,17 +30,6 @@ export const AuthProvider = ({ children }) => {
           const currentUser = getCurrentUser();
           setUser(currentUser);
           setAuthenticated(true);
-
-          // Optionally refresh the token
-          try {
-            await refreshToken();
-          } catch (refreshError) {
-            console.warn(
-              "Token refresh failed, user may need to login again soon",
-              refreshError
-            );
-            // Continue with current token
-          }
         }
       } catch (error) {
         console.error("Auth check error:", error);
