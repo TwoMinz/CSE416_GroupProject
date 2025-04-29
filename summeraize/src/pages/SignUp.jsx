@@ -46,18 +46,20 @@ const Signup = () => {
     try {
       // Call the signup function from auth service
       const result = await signup(email, password, username);
-      console.log(result);
-      if (result) {
+
+      if (result && result.success) {
         // Redirect to login page after successful signup
         navigate("/login", {
           state: { message: "Account created successfully! Please log in." },
         });
       } else {
-        setError(result.message || "Signup failed. Please try again.");
+        setError(result?.message || "Signup failed. Please try again.");
       }
     } catch (error) {
       console.error("Signup error:", error);
-      setError("An error occurred during signup. Please try again.");
+      setError(
+        error?.message || "An error occurred during signup. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
