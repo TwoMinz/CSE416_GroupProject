@@ -1,0 +1,124 @@
+# Dependency directories
+node_modules/
+*/node_modules/
+jspm_packages/
+
+# Build outputs
+.serverless/
+*/serverless/
+.webpack/
+*/webpack/
+dist/
+build/
+*/build/
+*/dist/
+coverage/
+
+# React build files
+summaraize/build/
+summaraize/.next/
+
+# Serverless build files
+summaraize-serverless/.serverless/
+summaraize-serverless/.webpack/
+
+# Local DynamoDB files
+.dynamodb/
+local-db-data/
+local-s3-bucket/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
+*/.env
+*/.env.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+logs/
+*.log
+
+# Temporary files
+.DS_Store
+Thumbs.db
+.tmp/
+tmp/
+temp/
+
+# IDE and editor folders
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.swp
+*.swo
+
+# AWS credentials
+.aws/
+aws-credentials.json
+aws-exports.js
+aws-config.json
+awsconfiguration.json
+
+# Compiled binary addons
+build/Release
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Serverless directories
+.serverless-offline/
+*/serverless-offline/
+
+# Jest coverage
+coverage/
+
+# Local DynamoDB directory for downloading
+.dynamodb/
+
+# Yarn integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env
+.env.test
+.env.production
+
+# Temporary folders
+/.tmp/
+/.pnp
+.pnp.js
+
+# Mac files
+.DS_Store
+
+# Vercel
+.vercel
+
+# Local offline Lambda storage
+.esbuild/
+
+# React testing
+/coverage
+
+summarize_serverless_local/src/utils/aws-configure.js
+
+summeraize/src/config.js
+
+summeraize/src/NewConfig.js

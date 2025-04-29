@@ -1,0 +1,220 @@
+service: summaraize-backend
+
+frameworkVersion: "3"
+
+plugins:
+  - serverless-offline
+  - serverless-dynamodb-local
+  - serverless-s3-local
+  - serverless-dotenv-plugin
+
+custom:
+  dotenv:
+    include:
+      - USERS_TABLE
+      - PAPERS_TABLE
+      - CONNECTIONS_TABLE
+      - PAPERS_BUCKET
+    seed:
+      domain:
+        sources:
+          - table: ${self:provider.environment.USERS_TABLE}
+            sources: [./resources/dynamodb-seed/users.json]
+          - table: ${self:provider.environment.PAPERS_TABLE}
+            sources: [./resources/dynamodb-seed/papers.json]
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'ap-northeast-2'}
+  environment:
+    USERS_TABLE: ${ssm:/summaraize/${self:provider.stage}/USERS_TABLE}
+    PAPERS_TABLE: ${ssm:/summaraize/${self:provider.stage}/PAPERS_TABLE}
+    CONNECTIONS_TABLE: ${ssm:/summaraize/${self:provider.stage}/CONNECTIONS_TABLE}
+    USER_ARCHIVES_TABLE: ${ssm:/summaraize/${self:provider.stage}/USER_ARCHIVES_TABLE}
+    PAPERS_BUCKET: ${ssm:/summaraize/${self:provider.stage}/PAPERS_BUCKET}
+    JWT_SECRET: ${ssm:/summaraize/${self:provider.stage}/JWT_SECRET}
+    ACCESS_KEY: ${ssm:/summaraize/${self:provider.stage}/ACCESS_KEY}
+    SECRET_KEY: ${ssm:/summaraize/${self:provider.stage}/SECRET_KEY}
+    NODE_ENV: ${self:provider.stage}
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchWriteItem
+            - execute-api:ManageConnections
+
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PAPERS_TABLE}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}/index/*"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PAPERS_TABLE}/index/*"
+            - "arn:aws:execute-api:${self:provider.region}:*:*/@connections/*"
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+            - ssm:GetParameter
+            - ssm:GetParameters
+          Resource:
+            - "arn:aws:s3:::${self:provider.environment.PAPERS_BUCKET}/*"
+            - "arn:aws:ssm:${self:provider.region}:*:parameter/summaraize/${self:provider.stage}/*"
+
+functions:
+  # Authentication Functions
+  signUp:
+    handler: src/functions/auth/signup.handler
+    events:
+      - http:
+          path: /api/auth/signup
+          method: post
+          cors: true
+
+  login:
+    handler: src/functions/auth/login.handler
+    events:
+      - http:
+          path: /api/auth/login
+          method: post
+          cors: true
+
+  googleLogin:
+    handler: src/functions/auth/google-auth.handler
+    events:
+      - http:
+          path: /api/auth/google
+          method: get
+          cors: true
+
+  refreshToken:
+    handler: src/functions/auth/refresh-token.handler
+    events:
+      - http:
+          path: /api/auth/refresh
+          method: post
+          cors: true
+
+  # User Profile Functions
+  changeUsername:
+    handler: src/functions/auth/change-username.handler
+    events:
+      - http:
+          path: /api/auth/modify/username
+          method: post
+          cors: true
+
+  changePassword:
+    handler: src/functions/auth/change-password.handler
+    events:
+      - http:
+          path: /api/auth/modify/password
+          method: post
+          cors: true
+
+  changeProfileImage:
+    handler: src/functions/auth/change-profile-image.handler
+    events:
+      - http:
+          path: /api/auth/modify/profileImage
+          method: post
+          cors: true
+
+  logout:
+    handler: src/functions/auth/logout.handler
+    events:
+      - http:
+          path: /api/auth/logout
+          method: post
+          cors: true
+
+  # Paper Upload Functions
+  requestFileUpload:
+    handler: src/functions/papers/upload-request.handler
+    events:
+      - http:
+          path: /api/upload/request
+          method: post
+          cors: true
+
+  confirmUpload:
+    handler: src/functions/papers/confirm-upload.handler
+    events:
+      - http:
+          path: /api/upload/confirm
+          method: post
+          cors: true
+
+  # Paper Processing Functions
+  processPaper:
+    handler: src/functions/papers/process-paper.handler
+    timeout: 300
+    events:
+      - s3:
+          bucket: ${self:provider.environment.PAPERS_BUCKET}
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .pdf
+
+  # Paper Reading Functions
+  getContentUrl:
+    handler: src/functions/papers/get-content-url.handler
+    events:
+      - http:
+          path: /api/papers/{paperId}/contentUrl
+          method: get
+          cors: true
+
+  getPaperDetail:
+    handler: src/functions/papers/get-paper-detail.handler
+    events:
+      - http:
+          path: /api/papers/{paperId}/detail
+          method: get
+          cors: true
+
+  # Library Functions
+  loadLibrary:
+    handler: src/functions/library/load-library.handler
+    events:
+      - http:
+          path: /api/library/load
+          method: post
+          cors: true
+
+  searchPaper:
+    handler: src/functions/papers/search-paper.handler
+    events:
+      - http:
+          path: /api/papers/search
+          method: post
+          cors: true
+
+  # WebSocket Functions
+  wsConnect:
+    handler: src/websocket/connect.handler
+    events:
+      - websocket:
+          route: $connect
+
+  wsDisconnect:
+    handler: src/websocket/disconnect.handler
+    events:
+      - websocket:
+          route: $disconnect
+
+  wsPaperProcessStatus:
+    handler: src/websocket/paper-process-status.handler
+    events:
+      - websocket:
+          route: paperProcessStatus
