@@ -80,6 +80,13 @@ const confirmUpload = async (
 
 // Direct upload to S3 with presigned URL
 const uploadToS3 = async (file, uploadUrl, formFields) => {
+
+  console.log(
+    "\n file: " + file, 
+    "\n uploadUrl: " + uploadUrl, 
+    "\n formFields: " + formFields
+  )
+
   try {
     const formData = new FormData();
 
@@ -156,7 +163,8 @@ const uploadPaperFile = async (file, token, userId, onProgress) => {
     // Step 1: Request upload URL
     onProgress &&
       onProgress({ status: "requesting", message: "Requesting upload URL..." });
-    const uploadRequest = await requestFileUpload(
+      console.log("--- Step1 ---");
+      const uploadRequest = await requestFileUpload(
       file.name,
       file.type,
       file.size,
@@ -164,12 +172,16 @@ const uploadPaperFile = async (file, token, userId, onProgress) => {
     );
 
     if (!uploadRequest.success) {
+      console.log("Upload Request Error:", uploadRequest.message);
       throw new Error(uploadRequest.message || "Failed to get upload URL");
     }
+
+    console.log("Success: Upload Request:", uploadRequest);
 
     // Step 2: Upload to S3
     onProgress &&
       onProgress({ status: "uploading", message: "Uploading file..." });
+    console.log("--- Step2 ---");
     await uploadToS3(
       file,
       uploadRequest.directUploadConfig.url,
@@ -179,6 +191,7 @@ const uploadPaperFile = async (file, token, userId, onProgress) => {
     // Step 3: Confirm upload success
     onProgress &&
       onProgress({ status: "confirming", message: "Confirming upload..." });
+    console.log("--- Step3 ---");
     await confirmUpload(
       uploadRequest.paperId,
       uploadRequest.fileKey,
