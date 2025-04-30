@@ -139,7 +139,7 @@ module.exports.handler = async (event) => {
         .get({
           TableName: process.env.PAPERS_TABLE,
           Key: {
-            paperId,
+            id: paperId,
           },
         })
         .promise();
@@ -163,9 +163,9 @@ module.exports.handler = async (event) => {
       console.error("[CONFIRM-UPLOAD] Error retrieving paper record:", error);
       throw new Error(`Failed to retrieve paper: ${error.message}`);
     }
-
+    console.log("[VERIFYING PAPER] ", paper);
     // Verify paper ownership
-    if (paper.userId !== userId) {
+    if (paper.userId != userId) {
       return {
         statusCode: 403,
         headers: {
@@ -185,10 +185,13 @@ module.exports.handler = async (event) => {
     let expressionAttributeValues = {
       ":timestamp": timestamp,
     };
+    // 표현식 속성 이름 추가
+    let expressionAttributeNames = {};
 
     if (uploadSuccess) {
-      updateExpression += ", status = :status";
+      updateExpression += ", #status = :status";
       expressionAttributeValues[":status"] = "processing";
+      expressionAttributeNames["#status"] = "status"; // 예약어 처리
 
       // Update title if provided
       if (fileName) {
@@ -196,8 +199,9 @@ module.exports.handler = async (event) => {
         expressionAttributeValues[":title"] = fileName;
       }
     } else {
-      updateExpression += ", status = :status";
+      updateExpression += ", #status = :status";
       expressionAttributeValues[":status"] = "failed";
+      expressionAttributeNames["#status"] = "status"; // 예약어 처리
     }
 
     try {
@@ -205,10 +209,11 @@ module.exports.handler = async (event) => {
         .update({
           TableName: process.env.PAPERS_TABLE,
           Key: {
-            paperId,
+            id: paperId,
           },
           UpdateExpression: updateExpression,
           ExpressionAttributeValues: expressionAttributeValues,
+          ExpressionAttributeNames: expressionAttributeNames, // 속성 이름 추가
           ReturnValues: "ALL_NEW",
         })
         .promise();
