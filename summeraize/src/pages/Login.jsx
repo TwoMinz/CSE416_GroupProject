@@ -2,12 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import researchImage from "../assets/images/student-research.jpg";
 import { useAuth } from "../context/AuthContext";
-//import { getCurrentUser } from "../services/auth";
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  //const { user } = getCurrentUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,8 +33,6 @@ const Login = () => {
     try {
       // Call the login function from AuthContext
       const result = await login(email, password);
-      //const curr_user = user();
-      //console.log("User data:", curr_user)
 
       if (result.success) {
         // Redirect to home page after successful login
