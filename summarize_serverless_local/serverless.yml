@@ -59,6 +59,8 @@ provider:
             - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PAPERS_TABLE}"
             - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}/index/*"
             - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PAPERS_TABLE}/index/*"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}/index/*"
             - "arn:aws:execute-api:${self:provider.region}:*:*/@connections/*"
         - Effect: Allow
           Action:

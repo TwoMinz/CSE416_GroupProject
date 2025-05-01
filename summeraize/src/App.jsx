@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Library from "./pages/Library";
 import BookStand from "./pages/BookStand";
 import Signup from "./pages/SignUp";
+import Setting from "./pages/Setting";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Protected route component
@@ -53,6 +54,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <BookStand />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/setting"
+            element={
+              <ProtectedRoute>
+                <Setting />
               </ProtectedRoute>
             }
           />

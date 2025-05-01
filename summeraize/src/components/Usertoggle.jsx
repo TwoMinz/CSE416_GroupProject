@@ -14,6 +14,10 @@ const UserToggle = ({ onArchiveClick, onSettingClick, onLogoutClick }) => {
     navigate('/Library');
   }
 
+  const handleClickSetting = () => {
+    navigate('/setting');
+  }
+
   // 드롭다운 표시 여부 토글
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -71,7 +75,7 @@ const UserToggle = ({ onArchiveClick, onSettingClick, onLogoutClick }) => {
             </li>
             <li>
               <button
-                onClick={() => handleOptionClick(onSettingClick)}
+                onClick={() => handleOptionClick(handleClickSetting)}
                 className="w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center transition-colors duration-150"
               >
                 <img src={settingIcon} alt="Setting" className="w-5 h-5 mr-2" />

@@ -81,23 +81,36 @@ const confirmUpload = async (
 // Direct upload to S3 with presigned URL
 const uploadToS3 = async (file, uploadUrl, formFields) => {
   try {
+    console.log("Uploading to S3 with:", {
+      url: uploadUrl,
+      fields: formFields,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+    });
+
     const formData = new FormData();
 
-    // Add the form fields from the presigned URL
     Object.entries(formFields).forEach(([key, value]) => {
       formData.append(key, value);
     });
 
-    // Add the file last
     formData.append("file", file);
 
     const response = await fetch(uploadUrl, {
       method: "POST",
       body: formData,
+      credentials: "omit",
     });
 
     if (!response.ok) {
-      throw new Error("S3 upload failed");
+      const responseText = await response.text();
+      console.error("S3 Upload failed:", {
+        status: response.status,
+        statusText: response.statusText,
+        responseBody: responseText,
+      });
+      throw new Error("S3 upload failed: " + response.statusText);
     }
 
     return true;

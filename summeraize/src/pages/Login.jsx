@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import researchImage from "../assets/images/student-research.jpg";
 import { useAuth } from "../context/AuthContext";
+//import { getCurrentUser } from "../services/auth";
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  //const { user } = getCurrentUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -33,9 +35,12 @@ const Login = () => {
     try {
       // Call the login function from AuthContext
       const result = await login(email, password);
+      //const curr_user = user();
+      //console.log("User data:", curr_user)
 
       if (result.success) {
         // Redirect to home page after successful login
+        console.log("Login successful:", result);
         navigate("/");
       } else {
         setError(result.error || "Login failed. Please try again.");
@@ -117,19 +122,19 @@ const Login = () => {
           {/* Left side - Help links */}
           <div className="flex-1 text-sm flex flex-col space-y-2">
             <a
-              href="#"
+              href="/"
               className="text-white font-semibold hover:text-blue-700 text-base"
             >
               Any help?
             </a>
             <a
-              href="#"
+              href="/"
               className="text-white font-semibold hover:text-blue-700 text-base"
             >
               Forgot PW
             </a>
             <a
-              href="#"
+              href="/"
               className="text-white font-semibold hover:text-blue-700 text-base"
             >
               Policy

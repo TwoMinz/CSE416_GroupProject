@@ -5,24 +5,17 @@ import UserToggle from "../components/UserToggle";
 import { useAuth } from "../context/AuthContext";
 
 const Home = () => {
+
   // Use the auth context instead of local state
   const { authenticated, logout } = useAuth();
   const [uploadStatus] = useState(null);
+
 
   const handleFileUpload = (files) => {
     console.log("Files received in Home component:", files);
     // File upload handling is now in the PdfUploader component
   };
 
-  // UserToggle option handlers
-  const handleArchiveClick = () => {
-    console.log("Archive clicked");
-    // Navigate to library would happen in the UserToggle component
-  };
-
-  const handleSettingClick = () => {
-    console.log("Setting clicked");
-  };
 
   const handleLogoutClick = async () => {
     try {
@@ -39,8 +32,6 @@ const Home = () => {
       <div className="absolute top-5 right-5">
         {authenticated ? (
           <UserToggle
-            onArchiveClick={handleArchiveClick}
-            onSettingClick={handleSettingClick}
             onLogoutClick={handleLogoutClick}
           />
         ) : (
