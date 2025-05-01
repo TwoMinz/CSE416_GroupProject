@@ -3,13 +3,18 @@ import PdfUploader from "../components/PdfUploader";
 import Signin from "../components/Signin";
 import UserToggle from "../components/UserToggle";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
 
   // Use the auth context instead of local state
   const { authenticated, logout } = useAuth();
   const [uploadStatus] = useState(null);
+  const navigate = useNavigate();
 
+  const handleHomeClick = () => {
+    navigate("/");
+  }
 
   const handleFileUpload = (files) => {
     console.log("Files received in Home component:", files);
@@ -54,7 +59,10 @@ const Home = () => {
 
       {/* App name */}
       <div className="mt-auto pt-5">
-        <h2 className="text-2xl font-bold text-white drop-shadow-sm">
+      <h2 
+          onClick={handleHomeClick} 
+          className="text-2xl font-bold text-white cursor-pointer hover:text-blue-200 transition-colors"
+        >
           SummarAIze
         </h2>
       </div>

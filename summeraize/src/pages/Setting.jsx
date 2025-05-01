@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -12,6 +12,7 @@ const LANGUAGE_MAP = {
 const Setting = () => {
   const navigate = useNavigate();
   const { user, authenticated } = useAuth();
+  const fileInputRef = useRef(null); // 파일 입력을 위한 ref 추가
 
   // State 변수들을 실제 사용자 정보로 초기화
   const [nickname, setNickname] = useState('');
@@ -26,7 +27,7 @@ const Setting = () => {
     };
 
     if (authenticated){
-      console.log('\nUser:', user);
+      console.log('User:', user);
     }
     
     if (authenticated && user) {
@@ -66,27 +67,38 @@ const Setting = () => {
     setLanguage(e.target.value);
   };
 
+  // 사진 버튼 클릭 핸들러
+  const handlePictureButtonClick = () => {
+    // 숨겨진 file input 요소 클릭
+    fileInputRef.current.click();
+  };
+
+  // 사진 선택 핸들러
+  const handleChoosePicture = (e) => {
+    const selectedFile = e.target.files[0];
+    
+    if (selectedFile) {
+      console.log('Selected file:', {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: `${(selectedFile.size / 1024).toFixed(2)} KB`
+      });
+      
+      // 여기에 파일 처리 로직을 추가할 수 있습니다
+      // 예: 파일 업로드 API 호출, 이미지 미리보기 등
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-100 to-blue-500">
-      {/* Header with Back Button */}
-      <div className="p-5 flex items-center">
-        <button 
-          onClick={handleBackClick}
-          className="text-white font-semibold flex items-center"
-        >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="h-5 w-5 mr-1" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
-        <div className="w-20"></div> {/* Spacer for centering the title */}
-      </div>
+      {/* 숨겨진 파일 입력 요소 */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".png,.jpg,.jpeg"
+        onChange={handleChoosePicture}
+        style={{ display: 'none' }}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex justify-center items-center p-4">
@@ -106,7 +118,10 @@ const Setting = () => {
                   <span className="text-gray-500 font-medium">Edit Photo</span>
                 )}
               </div>
-              <button className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 shadow-md hover:bg-blue-600 transition-colors">
+              <button 
+                className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 shadow-md hover:bg-blue-600 transition-colors"
+                onClick={handlePictureButtonClick}
+              >
                 <svg 
                   xmlns="http://www.w3.org/2000/svg" 
                   className="h-5 w-5" 
@@ -197,7 +212,11 @@ const Setting = () => {
 
       {/* Footer */}
       <div className="p-5 text-center">
-        <h2 className="text-2xl font-bold text-white">SummarAIze</h2>
+        <h2 
+          onClick={handleBackClick} 
+          className="text-2xl font-bold text-white cursor-pointer hover:text-blue-200 transition-colors">
+          SummarAIze
+        </h2>
       </div>
     </div>
   );
