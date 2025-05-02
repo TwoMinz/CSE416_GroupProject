@@ -117,9 +117,10 @@ Finding the right papers can be a challenge. Existing search systems are ineffic
 - No native mobile application (future consideration)
 
 ## 🔗 Related Links
-- [Software Requirements Document](https://docs.example.com/summaraize-requirements) (placeholder)
-- [Software Design Document](https://docs.example.com/summaraize-design) (placeholder)
-- [UI Design (Figma)](https://drive.google.com/file/d/15a7dWf2oWbGZ7NDhSxFBgu2_BlvM2Xap/view?usp=sharing)
+- [Software Requirements Document](summeraize/Document/Project_Requirement.md)
+- [Use Cases](summeraize/Document/Use_cases.md)
+- [Software Design Document](summeraize/Document/SummarAIze_DataDesign.pdf)
+- [UI Design (Figma)](https://www.figma.com/design/Z75XG7AuxpYYATCS8o7In2/SummarAIze?node-id=0-1&p=f&t=zk77b4eVKRgLqtIL-0)
 
 ---
 
