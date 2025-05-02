@@ -72,14 +72,6 @@
 | **Scenario** | 1. The user accesses their personal library.<br/>2. The system displays previously saved summarized papers.<br/>3. The user searches, filters, or sorts the library by title, author, or date. |
 | **Extension** | - If no papers are saved, the system displays a message indicating an empty library.<br/>- If a paper is deleted, the system removes it from the library and updates the list. |
 
-## Library Favorite Summarized Paper
-| Attribute | Description |
-|-----------|-------------|
-| **Primary Actor** | Customer |
-| **Priority** | Low |
-| **Scenario** | 1. The user selects a paper from the library.<br/>2. The user clicks the "Star" or "Favorite" button to mark it as important.<br/>3. The system updates the status of the paper and moves it to the "Favorites" section. |
-| **Extension** | - If the user unstars a paper, it is removed from the "Favorites" section but remains in the library.<br/>- If no favorite papers exist, the system displays a message indicating an empty "Favorites" section. |
-
 ## Search for Saved Papers
 | Attribute | Description |
 |-----------|-------------|
