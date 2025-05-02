@@ -355,9 +355,9 @@ gantt
 
 | Milestone | Completion | Status | Key Focus |
 |-----------|------------|--------|-----------|
-| **Milestone 1** | 95% | 🟡 IN PROGRESS | Database & Foundation |
-| **Milestone 2** | 85% | 🟡 IN PROGRESS | Core Functionality |
-| **Milestone 3** | 10% | 🔵 UPCOMING | Feature Completion |
+| **Milestone 1** | 95% | 🟢 COMPLETE | Database & Foundation |
+| **Milestone 2** | 85% | 🟢 COMPLETE (Delayed Auth) | Core Functionality |
+| **Milestone 3** | 10% | 🟠 IN PROGRESS | Feature Completion |
 | **Milestone 4** | 0% | 🔵 UPCOMING | Beta Release |
 | **Final Presentation** | 0% | 🔵 UPCOMING | Project Completion |
 
