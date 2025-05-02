@@ -40,10 +40,22 @@ const sendWebSocketMessage = async (connectionId, message) => {
 const triggerPaperProcessing = async (paperId, fileKey, userId) => {
   const lambda = getLambdaClient();
 
+  // Debug logging
+  console.log("[CONFIRM-UPLOAD] Triggering paper processing with:", {
+    paperId,
+    fileKey,
+    userId,
+    functionName: `${process.env.SERVICE_NAME || "summaraize-backend"}-${
+      process.env.STAGE || "dev"
+    }-processPaper`,
+  });
+
   try {
     await lambda
       .invoke({
-        FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-processPaper`,
+        FunctionName: `${process.env.SERVICE_NAME || "summaraize-backend"}-${
+          process.env.STAGE || "dev"
+        }-processPaper`,
         InvocationType: "Event",
         Payload: JSON.stringify({
           body: JSON.stringify({

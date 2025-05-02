@@ -1,5 +1,6 @@
 "use strict";
 const jwt = require("jsonwebtoken");
+const AWS = require("aws-sdk"); // Make sure AWS is imported
 const { getDynamoDBClient } = require("../utils/aws-config");
 require("dotenv").config();
 
@@ -11,6 +12,24 @@ const verifyToken = (token) => {
   } catch (error) {
     throw new Error("Invalid token");
   }
+};
+
+// Generate a numeric ID from a string
+const generateNumericId = (str) => {
+  // Use the first 10 digits from the string, or pad with random digits if needed
+  const digits = str.replace(/\D/g, "");
+
+  if (digits.length >= 10) {
+    return parseInt(digits.substring(0, 10), 10);
+  }
+
+  // If not enough digits, pad with random numbers
+  let result = digits;
+  while (result.length < 10) {
+    result += Math.floor(Math.random() * 10);
+  }
+
+  return parseInt(result, 10);
 };
 
 module.exports.handler = async (event) => {
@@ -43,20 +62,29 @@ module.exports.handler = async (event) => {
     // Get DynamoDB client
     const documentClient = getDynamoDBClient();
 
-    // Store connection in DynamoDB
+    // Generate a numeric ID from the connection ID
+    const numericId = generateNumericId(connectionId);
+    console.log(
+      `Generated numeric ID: ${numericId} from connectionId: ${connectionId}`
+    );
+
+    // Store connection in DynamoDB with the numeric id as the primary key
     await documentClient
       .put({
         TableName: process.env.CONNECTIONS_TABLE,
         Item: {
-          connectionId,
-          userId,
+          id: numericId, // Numeric ID as required by schema
+          connectionId: connectionId, // Store the original connection ID as attribute
+          userId: userId,
           timestamp: new Date().toISOString(),
           endpoint: `https://${domainName}/${stage}`,
         },
       })
       .promise();
 
-    console.log(`User ${userId} connected with connection ID ${connectionId}`);
+    console.log(
+      `User ${userId} connected with connection ID ${connectionId} and numeric ID ${numericId}`
+    );
 
     return { statusCode: 200, body: "Connected" };
   } catch (error) {

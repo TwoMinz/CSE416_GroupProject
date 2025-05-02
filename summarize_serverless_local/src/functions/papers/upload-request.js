@@ -59,9 +59,21 @@ module.exports.handler = async (event) => {
       };
     }
 
-    // Generate unique ID for paper
-    const paperId = nanoid(16);
-    const userId = decoded.userId;
+    const generatePaperId = () => {
+      // Current timestamp (milliseconds since epoch)
+      const timestamp = Date.now();
+
+      // Random 3-digit number
+      const randomSuffix = Math.floor(Math.random() * 1000);
+
+      // Combine for a unique ID (pad random number to ensure 3 digits)
+      return parseInt(
+        `${timestamp}${randomSuffix.toString().padStart(3, "0")}`
+      );
+    };
+
+    const paperId = generatePaperId();
+    const userId = String(decoded.userId);
     const now = new Date().toISOString();
 
     // Generate file key (path in S3)
@@ -75,7 +87,7 @@ module.exports.handler = async (event) => {
       Bucket: process.env.PAPERS_BUCKET,
       Key: fileKey,
       ContentType: fileType,
-      Expires: 600, // URL expires in 10 minutes
+      Expires: 6000, // URL expires in 10 minutes
     };
 
     // Generate direct upload configuration (S3 presigned post)
@@ -84,27 +96,33 @@ module.exports.handler = async (event) => {
       Fields: {
         key: fileKey,
       },
-      Conditions: [
-        ["content-length-range", 0, 10 * 1024 * 1024], // 10MB file size limit
-        ["starts-with", "$Content-Type", "application/"],
-      ],
-      Expires: 600,
+      Conditions: [["content-length-range", 0, 25 * 1024 * 1024]],
+      Expires: 6000,
     });
-
+    console.log(
+      "[ITEM]: ",
+      paperId,
+      userId,
+      fileName,
+      fileKey,
+      now,
+      fileSize,
+      fileType
+    );
     // Create paper record in DynamoDB
     const documentClient = getDynamoDBClient();
     await documentClient
       .put({
         TableName: process.env.PAPERS_TABLE,
         Item: {
-          paperId,
-          userId,
+          id: paperId, // Use explicit string for attribute name
+          userId: userId,
           title: fileName,
-          fileKey,
+          fileKey: fileKey,
           uploadDate: now,
           status: "pending",
-          fileSize,
-          fileType,
+          fileSize: fileSize,
+          fileType: fileType,
           lastUpdated: now,
         },
       })
@@ -122,7 +140,7 @@ module.exports.handler = async (event) => {
         uploadUrl: directUploadConfig.url,
         fileKey,
         paperId,
-        expiresIn: 600,
+        expiresIn: 6000,
         directUploadConfig,
       }),
     };

@@ -40,6 +40,7 @@ provider:
     NODE_ENV: ${self:provider.stage}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
 
+  provider:
   iam:
     role:
       statements:
@@ -53,7 +54,6 @@ provider:
             - dynamodb:DeleteItem
             - dynamodb:BatchWriteItem
             - execute-api:ManageConnections
-
           Resource:
             - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}"
             - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PAPERS_TABLE}"
@@ -61,6 +61,8 @@ provider:
             - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PAPERS_TABLE}/index/*"
             - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}"
             - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}/index/*"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/connection"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/connection/index/*"
             - "arn:aws:execute-api:${self:provider.region}:*:*/@connections/*"
         - Effect: Allow
           Action:

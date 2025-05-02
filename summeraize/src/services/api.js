@@ -1,5 +1,6 @@
 // Base API configuration and utility functions
 import config from "../config";
+import { refreshToken, getToken, getCurrentUser } from "./auth";
 
 // Get API base URL from config
 const API_BASE_URL = config.apiBaseUrl;
@@ -17,13 +18,104 @@ const getHeaders = (token = null) => {
   return headers;
 };
 
+const decodeJWT = (token) => {
+  try {
+    if (!token) return null;
+
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    const payload = parts[1];
+    const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error("Failed to decode token:", error);
+    return null;
+  }
+};
+
+const isTokenExpired = (token) => {
+  if (!token) return true;
+
+  const decoded = decodeJWT(token);
+  if (!decoded || !decoded.exp) return true;
+
+  // exp는 초 단위, Date.now()는 밀리초 단위
+  const currentTime = Math.floor(Date.now() / 1000);
+
+  return decoded.exp <= currentTime;
+};
+
+// 토큰 자동 갱신 처리
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
+// 자동 갱신 함수
+const handleTokenRefresh = async () => {
+  try {
+    if (isRefreshing) {
+      // 다른 요청이 이미 갱신 중이면 대기
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      });
+    }
+
+    isRefreshing = true;
+
+    const result = await refreshToken();
+
+    if (result.success) {
+      isRefreshing = false;
+      processQueue(null, result.accessToken);
+      return result.accessToken;
+    } else {
+      isRefreshing = false;
+      processQueue(new Error("Token refresh failed"));
+      throw new Error("Token refresh failed");
+    }
+  } catch (error) {
+    isRefreshing = false;
+    processQueue(error);
+    throw error;
+  }
+};
+
 // Generic API request function
 const apiRequest = async (endpoint, method, data = null, token = null) => {
   try {
+    // 자동으로 현재 토큰 사용
+    let currentToken = token || getToken();
+
+    // 토큰이 만료되었거나 만료 임박한 경우 갱신 시도
+    if (currentToken && isTokenExpired(currentToken)) {
+      console.log("Token expired, attempting to refresh before API request");
+      try {
+        currentToken = await handleTokenRefresh();
+      } catch (refreshError) {
+        console.error("Failed to refresh token:", refreshError);
+        // 로그인 페이지로 리다이렉트하거나 다른 에러 처리
+        window.dispatchEvent(new CustomEvent("auth:required"));
+        throw new Error("Authentication required");
+      }
+    }
+
     const url = `${API_BASE_URL}${endpoint}`;
     const options = {
       method,
-      headers: getHeaders(token),
+      headers: getHeaders(currentToken),
     };
 
     if (data && (method === "POST" || method === "PUT")) {
@@ -31,6 +123,48 @@ const apiRequest = async (endpoint, method, data = null, token = null) => {
     }
 
     const response = await fetch(url, options);
+
+    // 토큰 만료로 인한 401 에러인 경우
+    if (response.status === 401) {
+      const responseData = await response.json();
+
+      // 토큰 관련 에러 메시지 확인
+      if (
+        responseData.message?.includes("token") ||
+        responseData.message?.includes("Token") ||
+        responseData.message?.includes("auth")
+      ) {
+        console.log("Received 401, attempting to refresh token");
+
+        try {
+          // 토큰 갱신 시도
+          currentToken = await handleTokenRefresh();
+
+          // 새 토큰으로 요청 재시도
+          const retryOptions = {
+            ...options,
+            headers: getHeaders(currentToken),
+          };
+
+          const retryResponse = await fetch(url, retryOptions);
+          const retryData = await retryResponse.json();
+
+          if (!retryResponse.ok) {
+            throw new Error(
+              retryData.message || "API request failed after token refresh"
+            );
+          }
+
+          return retryData;
+        } catch (refreshError) {
+          console.error("Token refresh failed:", refreshError);
+          // 로그인 페이지로 리다이렉트하거나 다른 에러 처리
+          window.dispatchEvent(new CustomEvent("auth:required"));
+          throw new Error("Authentication required");
+        }
+      }
+    }
+
     const responseData = await response.json();
 
     if (!response.ok) {
@@ -163,6 +297,18 @@ const searchPaper = async (userId, searchInput, token) => {
   );
 };
 
+window.addEventListener("auth:required", () => {
+  // 사용자에게 알림 표시
+  console.log("Authentication required. Redirecting to login...");
+
+  // 현재 URL 저장
+  const currentPath = window.location.pathname;
+  localStorage.setItem("auth_redirect", currentPath);
+
+  // 로그인 페이지로 리다이렉트
+  window.location.href = "/login";
+});
+
 // Handle paper upload process from start to finish
 const uploadPaperFile = async (file, token, userId, onProgress) => {
   try {
@@ -170,13 +316,13 @@ const uploadPaperFile = async (file, token, userId, onProgress) => {
     onProgress &&
       onProgress({ status: "requesting", message: "Requesting upload URL..." });
 
-      console.log(      
-        "\nfile name: " + file.name,
-        "\nfile type: " + file.type,
-        "\nfile size: " + file.size,
-        "\nfile token: " + token
-      )
-        
+    console.log(
+      "\nfile name: " + file.name,
+      "\nfile type: " + file.type,
+      "\nfile size: " + file.size,
+      "\nfile token: " + token
+    );
+
     const uploadRequest = await requestFileUpload(
       file.name,
       file.type,

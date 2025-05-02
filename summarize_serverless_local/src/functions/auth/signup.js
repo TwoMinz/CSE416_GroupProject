@@ -58,11 +58,11 @@ module.exports.handler = async (event) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create new user
-    const userId = uuidv4();
+    const userId = Date.now() + Math.floor(Math.random() * 1000);
     const createdAt = new Date().toISOString();
 
     const newUser = {
-      userId,
+      id: userId,
       email,
       password: hashedPassword,
       username,
