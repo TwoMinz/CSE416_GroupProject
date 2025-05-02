@@ -179,51 +179,51 @@ gantt
   - ❌ Paper view page
   - ❌ Library page
   - ❌ User settings page
-- ❌ Implement responsive design for all screen sizes
-- ❌ Add loading states and transitions
-- ❌ Implement error handling and user feedback
-- ❌ Create and style all modals and popups
-- ❌ Implement theme styling consistency
+- ⏳ Implement responsive design for all screen sizes
+- ⏳ Add loading states and transitions
+- ⏳ Implement error handling and user feedback
+- ⏳ Create and style all modals and popups
+- ⏳ Implement theme styling consistency
 
 ### 🔄 Full API Server Integration (Minhyeok)
-- ❌ Complete remaining API endpoints
-- ❌ Optimize API responses
-- ❌ Implement caching where appropriate
-- ❌ Add rate limiting
-- ❌ Complete error handling for all edge cases
-- ❌ Finalize WebSocket functionality
+- ⏳ Complete remaining API endpoints
+- ⏳ Optimize API responses
+- ⏳ Implement caching where appropriate
+- ⏳ Add rate limiting
+- ⏳ Complete error handling for all edge cases
+- ⏳ Finalize WebSocket functionality
 
 ### 💾 S3 Storage Server Setup (Minhyeok)
-- ❌ **Configure S3 buckets**
-  - ❌ Paper uploads bucket
-  - ❌ Summaries bucket
-  - ❌ User profile images bucket
-- ❌ Set up proper access policies
-- ❌ Implement file versioning if needed
-- ❌ Configure lifecycle rules
-- ❌ Set up encryption
+- ⏳ **Configure S3 buckets**
+  - ⏳ Paper uploads bucket
+  - ⏳ Summaries bucket
+  - ⏳ User profile images bucket
+- ⏳ Set up proper access policies
+- ⏳ Implement file versioning if needed
+- ⏳ Configure lifecycle rules
+- ⏳ Set up encryption
 
 ### 📤 File Upload/Download Functionality (Semin)
-- ❌ Implement drag-and-drop file upload
-- ❌ Add file type validation
-- ❌ Create upload progress indicators
-- ❌ Implement resumable uploads for large files
-- ❌ Add file download functionality
-- ❌ Create PDF viewer component
+- ⏳ Implement drag-and-drop file upload
+- ⏳ Add file type validation
+- ⏳ Create upload progress indicators
+- ⏳ Implement resumable uploads for large files
+- ⏳ Add file download functionality
+- ⏳ Create PDF viewer component
 
 ### 🧪 Initial End-to-End Testing (Minhyeok)
-- ❌ Create end-to-end test suite
-- ❌ Test user registration flow
-- ❌ Test paper upload and processing flow
-- ❌ Test library management
-- ❌ Test user profile updates
-- ❌ Test edge cases and error handling
+- ⏳ Create end-to-end test suite
+- ⏳ Test user registration flow
+- ⏳ Test paper upload and processing flow
+- ⏳ Test library management
+- ⏳ Test user profile updates
+- ⏳ Test edge cases and error handling
 
 ### 📝 Documentation
-- ❌ Update API documentation with final changes
-- ❌ Document S3 configuration
-- ❌ Create user documentation for platform features
-- ❌ Update README with latest setup instructions
+- ⏳ Update API documentation with final changes
+- ⏳ Document S3 configuration
+- ⏳ Create user documentation for platform features
+- ⏳ Update README with latest setup instructions
 
 </details>
 
@@ -236,53 +236,53 @@ gantt
 <summary><b>📋 Milestone 4 Requirements Checklist</b></summary>
 
 ### 🌐 Web Application Deployment (Semin)
-- ❌ Deploy frontend application via Vercel
-- ❌ Configure build settings
-- ❌ Set up environment variables
-- ❌ Connect to GitHub repository
-- ❌ Configure custom domain (if applicable)
-- ❌ **Test deployed application**
-  - ❌ Test on different browsers
-  - ❌ Test on mobile devices
-  - ❌ Performance testing
+- ⏳ Deploy frontend application via Vercel
+- ⏳ Configure build settings
+- ⏳ Set up environment variables
+- ⏳ Connect to GitHub repository
+- ⏳ Configure custom domain (if applicable)
+- ⏳ **Test deployed application**
+  - ⏳ Test on different browsers
+  - ⏳ Test on mobile devices
+  - ⏳ Performance testing
 
 ### ☁️ AWS Services Configuration (Minhyeok)
-- ❌ Configure custom URL domain
-- ❌ Upload server code
-- ❌ **Initiate AWS Lambda functions**
-  - ❌ Authentication functions
-  - ❌ Paper processing functions
-  - ❌ Library management functions
-- ❌ Configure AWS API Gateway
-- ❌ Set up WebSocket API endpoint
-- ❌ Test all serverless functions
+- ⏳ Configure custom URL domain
+- ⏳ Upload server code
+- ⏳ **Initiate AWS Lambda functions**
+  - ⏳ Authentication functions
+  - ⏳ Paper processing functions
+  - ⏳ Library management functions
+- ⏳ Configure AWS API Gateway
+- ⏳ Set up WebSocket API endpoint
+- ⏳ Test all serverless functions
 
 ### 🔄 Final Integration (Both)
-- ❌ Connect frontend to production backend
-- ❌ Test all features in production environment
-- ❌ Monitor for performance issues
-- ❌ Implement any critical fixes
+- ⏳ Connect frontend to production backend
+- ⏳ Test all features in production environment
+- ⏳ Monitor for performance issues
+- ⏳ Implement any critical fixes
 
 ### 🧪 Beta Testing (Semin)
-- ❌ Create test accounts
-- ❌ Conduct user acceptance testing
-- ❌ Collect and address feedback
-- ❌ Fix critical bugs
-- ❌ Document known issues
+- ⏳ Create test accounts
+- ⏳ Conduct user acceptance testing
+- ⏳ Collect and address feedback
+- ⏳ Fix critical bugs
+- ⏳ Document known issues
 
 ### 📝 Documentation
-- ❌ Create beta release notes
-- ❌ Update README with production details
-- ❌ Document deployment process
-- ❌ Update bug tracking system
-- ❌ Create user guide
+- ⏳ Create beta release notes
+- ⏳ Update README with production details
+- ⏳ Document deployment process
+- ⏳ Update bug tracking system
+- ⏳ Create user guide
 
 ### 🎤 Presentation Preparation
-- ❌ Create presentation slides
-- ❌ Prepare demo script
-- ❌ Assign presentation roles
-- ❌ Practice presentation
-- ❌ Prepare for Q&A
+- ⏳ Create presentation slides
+- ⏳ Prepare demo script
+- ⏳ Assign presentation roles
+- ⏳ Practice presentation
+- ⏳ Prepare for Q&A
 
 </details>
 
@@ -295,57 +295,57 @@ gantt
 <summary><b>📋 Final Requirements Checklist</b></summary>
 
 ### 🧪 Final Testing and Bug Fixes
-- ❌ **Test case verification (Semin)**
-  - ❌ Create comprehensive test cases
-  - ❌ Verify all features against requirements
-  - ❌ Document test results
-- ❌ **Bug reporting and tracking (Minhyeok)**
-  - ❌ Organize reported bugs by severity
-  - ❌ Fix critical bugs
-  - ❌ Document known issues
-- ❌ **Regression testing (Semin)**
-  - ❌ Ensure new fixes don't break existing features
-  - ❌ Test all user flows
-- ❌ **User acceptance testing (Minhyeok)**
-  - ❌ Get feedback from test users
-  - ❌ Implement critical feedback
+- ⏳ **Test case verification (Semin)**
+  - ⏳ Create comprehensive test cases
+  - ⏳ Verify all features against requirements
+  - ⏳ Document test results
+- ⏳ **Bug reporting and tracking (Minhyeok)**
+  - ⏳ Organize reported bugs by severity
+  - ⏳ Fix critical bugs
+  - ⏳ Document known issues
+- ⏳ **Regression testing (Semin)**
+  - ⏳ Ensure new fixes don't break existing features
+  - ⏳ Test all user flows
+- ⏳ **User acceptance testing (Minhyeok)**
+  - ⏳ Get feedback from test users
+  - ⏳ Implement critical feedback
 
 ### 📝 Final Documentation
-- ❌ Complete API documentation
-- ❌ User manual
-- ❌ Installation guide
-- ❌ Developer documentation
-- ❌ **Final report with:**
-  - ❌ Project overview
-  - ❌ Technical architecture
-  - ❌ Challenges and solutions
-  - ❌ Future improvements
+- ⏳ Complete API documentation
+- ⏳ User manual
+- ⏳ Installation guide
+- ⏳ Developer documentation
+- ⏳ **Final report with:**
+  - ⏳ Project overview
+  - ⏳ Technical architecture
+  - ⏳ Challenges and solutions
+  - ⏳ Future improvements
 
 ### 🎤 Final Presentation
-- ❌ **Create presentation slides (Semin)**
-  - ❌ Project overview
-  - ❌ Key features demonstration
-  - ❌ Technical highlights
-  - ❌ Challenges and solutions
-- ❌ **Demo script preparation (Minhyeok)**
-  - ❌ Plan demo flow
-  - ❌ Prepare backup demos in case of issues
-  - ❌ Create talking points
-- ❌ **Live demonstration (Semin & Minhyeok)**
-  - ❌ Practice run-through
-  - ❌ Prepare for common questions
-  - ❌ Assign presentation roles
-- ❌ **Q&A preparation (Minhyeok)**
-  - ❌ Anticipate questions
-  - ❌ Prepare responses
+- ⏳ **Create presentation slides (Semin)**
+  - ⏳ Project overview
+  - ⏳ Key features demonstration
+  - ⏳ Technical highlights
+  - ⏳ Challenges and solutions
+- ⏳ **Demo script preparation (Minhyeok)**
+  - ⏳ Plan demo flow
+  - ⏳ Prepare backup demos in case of issues
+  - ⏳ Create talking points
+- ⏳ **Live demonstration (Semin & Minhyeok)**
+  - ⏳ Practice run-through
+  - ⏳ Prepare for common questions
+  - ⏳ Assign presentation roles
+- ⏳ **Q&A preparation (Minhyeok)**
+  - ⏳ Anticipate questions
+  - ⏳ Prepare responses
 
 ### 📦 Final Submission Materials
-- ❌ Source code (with documentation)
-- ❌ Setup instructions
-- ❌ User documentation
-- ❌ Access information for deployed application
-- ❌ Final presentation slides
-- ❌ Project report
+- ⏳ Source code (with documentation)
+- ⏳ Setup instructions
+- ⏳ User documentation
+- ⏳ Access information for deployed application
+- ⏳ Final presentation slides
+- ⏳ Project report
 
 </details>
 
@@ -355,11 +355,11 @@ gantt
 
 | Milestone | Completion | Status | Key Focus |
 |-----------|------------|--------|-----------|
-| **Milestone 1** | 85% | IN PROGRESS | Database & Foundation |
-| **Milestone 2** | 65% | PLANNED | Core Functionality |
-| **Milestone 3** | 10% | PLANNED | Feature Completion |
-| **Milestone 4** | 0% | PLANNED | Beta Release |
-| **Final Presentation** | 0% | PLANNED | Project Completion |
+| **Milestone 1** | 95% | 🟡 IN PROGRESS | Database & Foundation |
+| **Milestone 2** | 85% | 🟡 IN PROGRESS | Core Functionality |
+| **Milestone 3** | 10% | 🔵 UPCOMING | Feature Completion |
+| **Milestone 4** | 0% | 🔵 UPCOMING | Beta Release |
+| **Final Presentation** | 0% | 🔵 UPCOMING | Project Completion |
 
 ---
 
