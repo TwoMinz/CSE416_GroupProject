@@ -73,9 +73,9 @@ module.exports.handler = async (event) => {
       .put({
         TableName: process.env.CONNECTIONS_TABLE,
         Item: {
-          id: numericId, // Numeric ID as required by schema
+          id: Number(numericId), // Numeric ID as required by schema
           connectionId: connectionId, // Store the original connection ID as attribute
-          userId: userId,
+          userId: String(userId),
           timestamp: new Date().toISOString(),
           endpoint: `https://${domainName}/${stage}`,
         },

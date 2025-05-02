@@ -10,7 +10,6 @@ import {
   addListener,
   requestPaperStatus,
 } from "../services/websocket";
-import config from "../config";
 
 const BookStand = () => {
   const navigate = useNavigate();
@@ -24,6 +23,7 @@ const BookStand = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [processingStatus, setProcessingStatus] = useState(null);
+  const [activeTab, setActiveTab] = useState("summary"); // "summary", "keypoints", "citation"
 
   // Get paperId from location state
   useEffect(() => {
@@ -78,6 +78,7 @@ const BookStand = () => {
         if (detailResponse.summary) {
           console.log("Summary available, setting content");
           setMdContent(detailResponse.summary);
+          setProcessingStatus("completed");
         } else {
           // If no summary, show a processing message
           console.log("No summary available, showing processing message");
@@ -153,13 +154,38 @@ const BookStand = () => {
     }
   };
 
+  // Handle tab changes
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+
+    // Change content based on selected tab
+    if (tab === "summary" && paperDetail?.summary) {
+      setMdContent(paperDetail.summary);
+    } else if (tab === "keypoints" && paperDetail?.keyPoints) {
+      // Format key points as markdown
+      const keyPointsMarkdown = `# Key Points\n\n${paperDetail.keyPoints
+        .map((point) => `- ${point.text} (p.${point.page})\n`)
+        .join("\n")}`;
+      setMdContent(keyPointsMarkdown);
+    } else if (tab === "citation" && paperDetail?.citation) {
+      // Format citation as markdown
+      const { citation } = paperDetail;
+      const citationMarkdown = `# Citation Information\n\n## Authors\n${citation.authors.join(
+        ", "
+      )}\n\n## Year\n${citation.year}\n\n## Publisher\n${
+        citation.publisher
+      }\n\n## APA Format\n${citation.apa}\n\n## MLA Format\n${citation.mla}`;
+      setMdContent(citationMarkdown);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-400 p-6">
       {/* User menu */}
       <div className="absolute top-5 right-5 z-10">
         <UserToggle
           onArchiveClick={() => navigate("/library")}
-          onSettingClick={() => console.log("Setting clicked")}
+          onSettingClick={() => navigate("/setting")}
           onLogoutClick={handleLogoutClick}
         />
       </div>
@@ -217,14 +243,53 @@ const BookStand = () => {
               style={{ height: "85vh" }}
             >
               <div className="h-full flex flex-col">
-                <div className="p-4 bg-blue-500 text-white flex justify-between items-center">
-                  <h2 className="text-2xl font-semibold">AI Summary</h2>
-                  {processingStatus && (
-                    <div className="px-3 py-1 bg-blue-600 rounded-full text-sm">
-                      {processingStatus}
+                {/* Tabs for different content views */}
+                <div className="p-4 bg-blue-500 text-white">
+                  <div className="flex justify-between items-center">
+                    <div className="flex space-x-1">
+                      <button
+                        className={`px-4 py-2 rounded-t-lg transition-colors ${
+                          activeTab === "summary"
+                            ? "bg-white text-blue-500 font-semibold"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
+                        onClick={() => handleTabChange("summary")}
+                      >
+                        Summary
+                      </button>
+                      <button
+                        className={`px-4 py-2 rounded-t-lg transition-colors ${
+                          activeTab === "keypoints"
+                            ? "bg-white text-blue-500 font-semibold"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
+                        onClick={() => handleTabChange("keypoints")}
+                      >
+                        Key Points
+                      </button>
+                      <button
+                        className={`px-4 py-2 rounded-t-lg transition-colors ${
+                          activeTab === "citation"
+                            ? "bg-white text-blue-500 font-semibold"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
+                        onClick={() => handleTabChange("citation")}
+                      >
+                        Citation
+                      </button>
                     </div>
-                  )}
+
+                    {/* Processing status badge */}
+                    {processingStatus && processingStatus !== "completed" && (
+                      <div className="px-3 py-1 bg-blue-600 rounded-full text-sm flex items-center">
+                        <div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse"></div>
+                        {processingStatus}
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Content display with markdown renderer */}
                 <div className="flex-1 overflow-hidden">
                   <MdFileReader markdownContent={mdContent} />
                 </div>

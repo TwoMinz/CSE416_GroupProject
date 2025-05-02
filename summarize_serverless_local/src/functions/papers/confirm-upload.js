@@ -51,19 +51,20 @@ const triggerPaperProcessing = async (paperId, fileKey, userId) => {
   });
 
   try {
+    // Properly format the payload with all required fields
+    const payload = {
+      paperId: paperId,
+      fileKey: fileKey,
+      userId: userId,
+    };
+
     await lambda
       .invoke({
         FunctionName: `${process.env.SERVICE_NAME || "summaraize-backend"}-${
           process.env.STAGE || "dev"
         }-processPaper`,
         InvocationType: "Event",
-        Payload: JSON.stringify({
-          body: JSON.stringify({
-            paperId,
-            fileKey,
-            userId,
-          }),
-        }),
+        Payload: JSON.stringify(payload),
       })
       .promise();
 
