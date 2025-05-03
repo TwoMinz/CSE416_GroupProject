@@ -13,11 +13,11 @@ const sendStatusUpdate = async (userId, paperId, status, message) => {
     const documentClient = getDynamoDBClient();
 
     // Get user's active connections
+    // Use scan instead of query since we don't have a proper UserIdIndex
     const connectionsResult = await documentClient
-      .query({
+      .scan({
         TableName: process.env.CONNECTIONS_TABLE,
-        IndexName: "UserIdIndex",
-        KeyConditionExpression: "userId = :userId",
+        FilterExpression: "userId = :userId",
         ExpressionAttributeValues: {
           ":userId": userId,
         },
@@ -72,11 +72,12 @@ const sendStatusUpdate = async (userId, paperId, status, message) => {
           );
 
           try {
-            // Delete using the numeric id as the key
+            // Delete connection by ID
+            // Adjust the key based on what we're seeing in the table screenshot
             await documentClient
               .delete({
                 TableName: process.env.CONNECTIONS_TABLE,
-                Key: { id: connection.id },
+                Key: { id: parseInt(connection.id) },
               })
               .promise();
           } catch (deleteError) {
@@ -111,11 +112,21 @@ const processPaper = async (paperId, fileKey, userId) => {
     // Get DynamoDB client
     const documentClient = getDynamoDBClient();
 
+    // Ensure paperId is the right type for our table
+    const paperIdKey =
+      typeof paperId === "string" && !isNaN(parseInt(paperId))
+        ? parseInt(paperId)
+        : paperId;
+
+    console.log(
+      `[PROCESS-PAPER] Using paper ID key: ${paperIdKey}, type: ${typeof paperIdKey}`
+    );
+
     // Update status to processing
     await documentClient
       .update({
         TableName: process.env.PAPERS_TABLE,
-        Key: { id: paperId },
+        Key: { id: paperIdKey },
         UpdateExpression: "SET #status = :status, lastUpdated = :timestamp",
         ExpressionAttributeValues: {
           ":status": "processing",
@@ -203,10 +214,11 @@ The paper concludes with important findings in this field.
       .promise();
 
     // Update paper record with summary and status
+    // Use the same paperIdKey we defined earlier
     await documentClient
       .update({
         TableName: process.env.PAPERS_TABLE,
-        Key: { id: paperId },
+        Key: { id: paperIdKey },
         UpdateExpression:
           "SET #status = :status, summary = :summary, summaryKey = :summaryKey, lastUpdated = :timestamp",
         ExpressionAttributeValues: {
@@ -305,6 +317,12 @@ module.exports.handler = async (event) => {
         paperId = keyParts[2];
       }
     }
+    // Case 3: Direct payload with no body field
+    else if (event.paperId && event.fileKey && event.userId) {
+      paperId = event.paperId;
+      fileKey = event.fileKey;
+      userId = event.userId;
+    }
 
     if (!paperId || !fileKey || !userId) {
       throw new Error(`Invalid event format. Missing required parameters. 
@@ -315,9 +333,18 @@ module.exports.handler = async (event) => {
       `[PROCESS-PAPER] Processing paper: ${paperId} for user: ${userId}`
     );
 
-    // Continue with your processing logic...
+    // Actually call the processPaper function instead of just logging
+    const result = await processPaper(paperId, fileKey, userId);
 
-    return { statusCode: 200, body: JSON.stringify({ success: true }) };
+    console.log(`[PROCESS-PAPER] Processing completed with result:`, result);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        success: true,
+        result,
+      }),
+    };
   } catch (error) {
     console.error("[PROCESS-PAPER] Unhandled error:", error);
     return {

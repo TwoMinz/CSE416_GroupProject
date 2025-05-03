@@ -1,6 +1,6 @@
 // Authentication service for SummarAIze application
 import { apiRequest } from "./api";
-
+import config from "../config";
 // Local storage keys
 const TOKEN_KEY = "summaraize-token";
 const REFRESH_TOKEN_KEY = "summaraize-refresh-token";
@@ -93,32 +93,67 @@ const logout = async () => {
 // Function to refresh the access token
 const refreshToken = async () => {
   try {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    console.log("Starting token refresh process");
+    const refreshTokenValue = localStorage.getItem(REFRESH_TOKEN_KEY);
 
-    if (!refreshToken) {
+    if (!refreshTokenValue) {
+      console.error("No refresh token found in local storage");
       throw new Error("No refresh token found");
     }
 
-    const response = await apiRequest("/api/auth/refresh", "POST", {
-      refreshToken,
+    // 기존 apiRequest 함수를 사용하지 않고 직접 fetch 호출
+    console.log("Making direct fetch to refresh token endpoint");
+    const response = await fetch(`${config.apiBaseUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken: refreshTokenValue }),
     });
 
-    if (response.success) {
-      localStorage.setItem(TOKEN_KEY, response.accessToken);
+    console.log(
+      "Refresh API raw response:",
+      response.status,
+      response.statusText
+    );
 
-      // Update user if returned
-      if (response.user) {
-        localStorage.setItem(USER_KEY, JSON.stringify(response.user));
-      }
+    // 응답이 JSON이 아닐 경우를 대비한 처리
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      console.error("Failed to parse refresh token response as JSON:", e);
+      const text = await response.text();
+      console.log("Response as text:", text);
+      throw new Error("Invalid JSON response from server");
     }
 
-    return response;
+    console.log("Refresh token response data:", data);
+
+    if (data.success) {
+      console.log("Token refresh successful, updating local storage");
+      localStorage.setItem(TOKEN_KEY, data.accessToken);
+
+      // Update user if returned
+      if (data.user) {
+        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      }
+
+      return data;
+    } else {
+      console.error("Token refresh failed:", data.message);
+      throw new Error(data.message || "Token refresh failed");
+    }
   } catch (error) {
     console.error("Token Refresh Error:", error);
+
+    // Clear tokens if refresh fails
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+
     throw error;
   }
 };
-
 // Function to get the current token
 const getToken = () => {
   return localStorage.getItem(TOKEN_KEY);

@@ -75,7 +75,7 @@ module.exports.handler = async (event) => {
     const userResult = await documentClient
       .get({
         TableName: process.env.USERS_TABLE,
-        Key: { userId },
+        Key: { id: userId },
       })
       .promise();
 

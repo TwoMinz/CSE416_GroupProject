@@ -71,9 +71,11 @@ provider:
             - s3:DeleteObject
             - ssm:GetParameter
             - ssm:GetParameters
+            - s3:ListBucket
           Resource:
             - "arn:aws:s3:::${self:provider.environment.PAPERS_BUCKET}/*"
             - "arn:aws:ssm:${self:provider.region}:*:parameter/summaraize/${self:provider.stage}/*"
+            - "arn:aws:s3:::${self:provider.environment.PAPERS_BUCKET}/*"
 
 functions:
   # Authentication Functions
