@@ -142,7 +142,7 @@ const sendStatusUpdate = async (userId, paperId, status, message) => {
         TableName: process.env.CONNECTIONS_TABLE,
         FilterExpression: "userId = :userId",
         ExpressionAttributeValues: {
-          ":userId": userId,
+          ":userId": String(userId),
         },
       })
       .promise();

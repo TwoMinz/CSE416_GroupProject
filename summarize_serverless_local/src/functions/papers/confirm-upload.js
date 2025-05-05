@@ -125,7 +125,7 @@ module.exports.handler = async (event) => {
       };
     }
 
-    const userId = decoded.userId;
+    const userId = String(decoded.userId);
     console.log(
       `[CONFIRM-UPLOAD] Confirmation from user ${userId} for paper ${paperId}`
     );

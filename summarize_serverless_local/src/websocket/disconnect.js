@@ -48,7 +48,7 @@ module.exports.handler = async (event) => {
     // Remove connection from DynamoDB using the numeric ID
     await documentClient
       .delete({
-        TableName: process.env.CONNECTIONS_TABLE || "summaraize-connections",
+        TableName: process.env.CONNECTIONS_TABLE,
         Key: { id: numericId },
       })
       .promise();

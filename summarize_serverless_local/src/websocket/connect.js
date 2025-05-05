@@ -75,7 +75,7 @@ module.exports.handler = async (event) => {
         Item: {
           id: Number(numericId), // Numeric ID as required by schema
           connectionId: connectionId, // Store the original connection ID as attribute
-          userId: String(userId),
+          userId: userId,
           timestamp: new Date().toISOString(),
           endpoint: `https://${domainName}/${stage}`,
         },
