@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import PdfReader from "../components/PdfReader";
+import SimplePdfReader from "../components/PdfReader";
 import MdFileReader from "../components/MdFileReader";
 import UserToggle from "../components/UserToggle";
-import { getPaperDetail, getContentUrl } from "../services/api";
+import { getContentUrl } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import {
   initWebSocket,
@@ -17,13 +17,12 @@ const BookStand = () => {
   const { user, authenticated, logout } = useAuth();
 
   const [paperId, setPaperId] = useState(null);
-  const [paperDetail, setPaperDetail] = useState(null);
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [summaryUrl, setSummaryUrl] = useState(null);
   const [mdContent, setMdContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [processingStatus, setProcessingStatus] = useState(null);
-  const [activeTab, setActiveTab] = useState("summary"); // "summary", "keypoints", "citation"
 
   // Get paperId from location state
   useEffect(() => {
@@ -45,7 +44,7 @@ const BookStand = () => {
     }
   }, [authenticated]);
 
-  // Load paper details and content when paperId is set
+  // Load paper content when paperId is set
   useEffect(() => {
     if (!authenticated || !user) {
       navigate("/login");
@@ -60,28 +59,26 @@ const BookStand = () => {
 
       try {
         const token = localStorage.getItem("summaraize-token");
-        console.log("Loading paper details for ID:", paperId);
+        console.log("Loading paper content for ID:", paperId);
 
-        // Request paper details
-        const detailResponse = await getPaperDetail(paperId, token);
-        console.log("Paper detail response:", detailResponse);
-        setPaperDetail(detailResponse);
-
-        // Request content URL
+        // Request content URLs for both PDF and summary
         const urlResponse = await getContentUrl(paperId, token);
-        if (urlResponse.viewUrl) {
+        console.log("Content URLs response:", urlResponse);
+
+        // Set PDF URL if available
+        if (urlResponse.pdfUrl) {
           console.log("PDF URL received");
-          setPdfUrl(urlResponse.viewUrl);
+          setPdfUrl(urlResponse.pdfUrl);
         }
 
-        // Load the markdown summary if available
-        if (detailResponse.summary) {
-          console.log("Summary available, setting content");
-          setMdContent(detailResponse.summary);
+        // Set summary URL if available
+        if (urlResponse.summaryUrl) {
+          console.log("Summary URL received");
+          setSummaryUrl(urlResponse.summaryUrl);
           setProcessingStatus("completed");
         } else {
-          // If no summary, show a processing message
-          console.log("No summary available, showing processing message");
+          // If no summary URL, show a processing message
+          console.log("No summary URL available, showing processing message");
           setMdContent(
             "# Processing paper...\n\nYour summary will appear here once processing is complete."
           );
@@ -114,23 +111,23 @@ const BookStand = () => {
         setProcessingStatus(data.status);
         console.log("Processing status updated:", data.status);
 
-        // If processing is complete, reload the paper details
+        // If processing is complete, reload the content URLs
         if (data.status === "completed") {
-          const loadUpdatedContent = async () => {
+          console.log("Processing completed, refreshing content URLs");
+          const refreshContent = async () => {
             try {
               const token = localStorage.getItem("summaraize-token");
-              const detailResponse = await getPaperDetail(paperId, token);
+              const urlResponse = await getContentUrl(paperId, token);
 
-              if (detailResponse.summary) {
-                console.log("Summary received, updating content");
-                setMdContent(detailResponse.summary);
+              if (urlResponse.summaryUrl) {
+                setSummaryUrl(urlResponse.summaryUrl);
               }
             } catch (error) {
-              console.error("Error reloading paper content:", error);
+              console.error("Error refreshing content URLs:", error);
             }
           };
 
-          loadUpdatedContent();
+          refreshContent();
         }
       }
     });
@@ -154,31 +151,6 @@ const BookStand = () => {
     }
   };
 
-  // Handle tab changes
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-
-    // Change content based on selected tab
-    if (tab === "summary" && paperDetail?.summary) {
-      setMdContent(paperDetail.summary);
-    } else if (tab === "keypoints" && paperDetail?.keyPoints) {
-      // Format key points as markdown
-      const keyPointsMarkdown = `# Key Points\n\n${paperDetail.keyPoints
-        .map((point) => `- ${point.text} (p.${point.page})\n`)
-        .join("\n")}`;
-      setMdContent(keyPointsMarkdown);
-    } else if (tab === "citation" && paperDetail?.citation) {
-      // Format citation as markdown
-      const { citation } = paperDetail;
-      const citationMarkdown = `# Citation Information\n\n## Authors\n${citation.authors.join(
-        ", "
-      )}\n\n## Year\n${citation.year}\n\n## Publisher\n${
-        citation.publisher
-      }\n\n## APA Format\n${citation.apa}\n\n## MLA Format\n${citation.mla}`;
-      setMdContent(citationMarkdown);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-400 p-6">
       {/* User menu */}
@@ -199,13 +171,6 @@ const BookStand = () => {
           >
             SummarAIze
           </h1>
-          {paperDetail && (
-            <div className="text-white">
-              <h2 className="text-xl font-semibold">
-                {paperDetail.title || "Untitled Paper"}
-              </h2>
-            </div>
-          )}
         </header>
 
         {/* Loading state */}
@@ -233,7 +198,7 @@ const BookStand = () => {
             {/* PDF panel */}
             <div className="w-full md:w-1/2 bg-white bg-opacity-90 rounded-3xl shadow-xl overflow-hidden">
               <div className="h-full">
-                <PdfReader pdfUrl={pdfUrl} />
+                <SimplePdfReader pdfUrl={pdfUrl} />
               </div>
             </div>
 
@@ -243,41 +208,10 @@ const BookStand = () => {
               style={{ height: "85vh" }}
             >
               <div className="h-full flex flex-col">
-                {/* Tabs for different content views */}
+                {/* Header with processing status badge */}
                 <div className="p-4 bg-blue-500 text-white">
                   <div className="flex justify-between items-center">
-                    <div className="flex space-x-1">
-                      <button
-                        className={`px-4 py-2 rounded-t-lg transition-colors ${
-                          activeTab === "summary"
-                            ? "bg-white text-blue-500 font-semibold"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
-                        }`}
-                        onClick={() => handleTabChange("summary")}
-                      >
-                        Summary
-                      </button>
-                      <button
-                        className={`px-4 py-2 rounded-t-lg transition-colors ${
-                          activeTab === "keypoints"
-                            ? "bg-white text-blue-500 font-semibold"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
-                        }`}
-                        onClick={() => handleTabChange("keypoints")}
-                      >
-                        Key Points
-                      </button>
-                      <button
-                        className={`px-4 py-2 rounded-t-lg transition-colors ${
-                          activeTab === "citation"
-                            ? "bg-white text-blue-500 font-semibold"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
-                        }`}
-                        onClick={() => handleTabChange("citation")}
-                      >
-                        Citation
-                      </button>
-                    </div>
+                    <h2 className="text-xl font-semibold">Summary</h2>
 
                     {/* Processing status badge */}
                     {processingStatus && processingStatus !== "completed" && (
@@ -291,7 +225,11 @@ const BookStand = () => {
 
                 {/* Content display with markdown renderer */}
                 <div className="flex-1 overflow-hidden">
-                  <MdFileReader markdownContent={mdContent} />
+                  {summaryUrl ? (
+                    <MdFileReader markdownUrl={summaryUrl} />
+                  ) : (
+                    <MdFileReader markdownContent={mdContent} />
+                  )}
                 </div>
               </div>
             </div>

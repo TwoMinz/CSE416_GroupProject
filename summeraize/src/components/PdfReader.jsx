@@ -1,10 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
-const SimplePdfReader = ({ pdfUrl = 'https://arxiv.org/pdf/1804.08150' }) => {
+const SimplePdfReader = ({ pdfUrl }) => {
   const [isLoading, setIsLoading] = useState(true);
 
+  // PDF가 없는 경우 메시지 표시
+  if (!pdfUrl) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-100">
+        <div className="text-center p-6">
+          <p className="text-gray-600 font-medium">PDF not available yet.</p>
+          <p className="text-gray-500 text-sm mt-2">
+            The document is still being processed...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Google PDF Viewer를 사용한 URL 생성
-  const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+  const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
+    pdfUrl
+  )}&embedded=true`;
 
   // PDF 로딩 완료 처리
   const handleLoad = () => {

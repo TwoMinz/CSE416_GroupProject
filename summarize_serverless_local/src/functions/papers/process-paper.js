@@ -862,19 +862,13 @@ const processPaper = async (paperId, fileKey, userId) => {
         Key: { id: paperIdKey },
         UpdateExpression: `
           SET #status = :status, 
-              summary = :summary, 
               summaryKey = :summaryKey, 
-              keyPoints = :keyPoints, 
-              citation = :citation,
               lastUpdated = :timestamp,
               title = :title
         `,
         ExpressionAttributeValues: {
           ":status": "completed",
-          ":summary": markdownContent,
           ":summaryKey": summaryKey,
-          ":keyPoints": analysis.keyPoints || [],
-          ":citation": analysis.citation || {},
           ":timestamp": new Date().toISOString(),
           ":title": analysis.title || "Untitled Paper",
         },

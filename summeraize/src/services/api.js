@@ -282,7 +282,25 @@ const getPaperDetail = async (paperId, token) => {
 };
 
 const getContentUrl = async (paperId, token) => {
-  return apiRequest(`/api/papers/${paperId}/contentUrl`, "GET", null, token);
+  try {
+    const response = await apiRequest(
+      `/api/papers/${paperId}/contentUrl`,
+      "GET",
+      null,
+      token
+    );
+
+    // 백엔드에서 pdfUrl과 summaryUrl을 반환하도록 수정됨
+    return {
+      pdfUrl: response.pdfUrl,
+      summaryUrl: response.summaryUrl,
+      expiresIn: response.expiresIn,
+      success: response.success,
+    };
+  } catch (error) {
+    console.error(`Error getting content URLs for paper ${paperId}:`, error);
+    throw error;
+  }
 };
 
 const searchPaper = async (userId, searchInput, token) => {
