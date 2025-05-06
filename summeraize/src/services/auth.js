@@ -101,7 +101,6 @@ const refreshToken = async () => {
       throw new Error("No refresh token found");
     }
 
-    // 기존 apiRequest 함수를 사용하지 않고 직접 fetch 호출
     console.log("Making direct fetch to refresh token endpoint");
     const response = await fetch(`${config.apiBaseUrl}/api/auth/refresh`, {
       method: "POST",
