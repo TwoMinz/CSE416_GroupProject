@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import researchImage from "../assets/images/student-research.jpg";
 import { signup } from "../services/auth";
+import GoogleLoginButton from "../components/GoogleLogin";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -167,6 +168,10 @@ const Signup = () => {
             </button>
           </div>
         </div>
+
+        <div className="h-full">
+            <GoogleLoginButton/>
+          </div>
       </div>
 
       {/* Right side - Image and Text */}
