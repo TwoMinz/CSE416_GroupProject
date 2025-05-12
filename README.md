@@ -78,6 +78,7 @@ Finding the right papers can be a challenge. Existing search systems are ineffic
 - **AWS S3**: For storage of uploaded documents and summaries
 
 ## 🚧 Development Timeline  
+- [Software Milestone](summeraize/Document/Milestone.md)
 
 | Milestone | Date | Status | Features |
 |-----------|------|--------|----------|
