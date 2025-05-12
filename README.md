@@ -83,8 +83,8 @@ Finding the right papers can be a challenge. Existing search systems are ineffic
 |-----------|------|--------|----------|
 | Initial Design | March 21, 2025 | ✅ | Requirements specification, problem definition |
 | Software Design | April 14, 2025 | ✅ | Architecture design, API specifications, deployment planning |
-| Milestone 1 | April 23, 2025 | 🔄 | Database implementation, API server setup, basic frontend |
-| Milestone 2 | April 30, 2025 | ⏳ | Complete API server, OAuth integration, user profile management |
+| Milestone 1 | April 23, 2025 | ✅ | Database implementation, API server setup, basic frontend |
+| Milestone 2 | April 30, 2025 | 🔄 | Complete API server, OAuth integration, user profile management |
 | Milestone 3 | May 12, 2025 | ⏳ | Complete frontend, S3 integration, file operations |
 | Beta Release | May 19, 2025 | ⏳ | Deployed application, AWS services configuration |
 | Final Presentation | May 28, 2025 | ⏳ | Project demonstration and presentation |
