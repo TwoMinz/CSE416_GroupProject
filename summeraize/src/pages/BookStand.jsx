@@ -26,10 +26,11 @@ const BookStand = () => {
 
   // Get paperId from location state
   useEffect(() => {
-    const id = location.state?.paperId;
-    if (id) {
-      setPaperId(id);
+    // Check for paperId in location state
+    if (location.state && location.state.paperId) {
+      const id = location.state.paperId;
       console.log("Paper ID from location state:", id);
+      setPaperId(id);
     } else {
       console.log("No paper ID in location state, using sample content");
       setMdContent(sampleMarkdown);

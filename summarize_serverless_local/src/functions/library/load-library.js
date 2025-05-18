@@ -41,11 +41,6 @@ const getPresignedUrl = (s3Key) => {
       process.env.NODE_ENV === "development" ? "LOCAL_SECRET_KEY" : undefined,
   });
 
-  // For development, return a placeholder URL
-  if (process.env.NODE_ENV === "development") {
-    return `http://localhost:4569/${process.env.PAPERS_BUCKET}/${s3Key}`;
-  }
-
   // For production, generate a presigned URL
   const url = s3.getSignedUrl("getObject", {
     Bucket: process.env.PAPERS_BUCKET,
@@ -104,8 +99,8 @@ module.exports.handler = async (event) => {
       };
     }
 
-    // Verify the authenticated user matches the requested userId
-    if (decoded.userId !== userId) {
+    // Verify the authenticated user matches the requested userId (using non-strict equality)
+    if (String(decoded.userId) !== String(userId)) {
       return {
         statusCode: 403,
         headers: {
@@ -119,6 +114,11 @@ module.exports.handler = async (event) => {
       };
     }
 
+    // Ensure userId is a string for consistent DynamoDB querying
+    const userIdString = String(userId);
+
+    console.log(`Querying papers for user: ${userIdString}`);
+
     // Query papers for this user
     const queryResult = await documentClient
       .query({
@@ -126,7 +126,7 @@ module.exports.handler = async (event) => {
         IndexName: "UserIdIndex",
         KeyConditionExpression: "userId = :userId",
         ExpressionAttributeValues: {
-          ":userId": userId,
+          ":userId": userIdString,
         },
       })
       .promise();
@@ -158,7 +158,7 @@ module.exports.handler = async (event) => {
       }
 
       return {
-        id: paper.paperId,
+        id: paper.id || paper.paperId,
         title: paper.title || "Untitled Paper",
         uploadDate: paper.uploadDate,
         status: paper.status || "unknown",

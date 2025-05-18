@@ -55,7 +55,12 @@ const Library = () => {
 
   // Handle paper click to navigate to BookStand
   const handlePaperClick = (paperId) => {
-    navigate("/bookstand", { state: { paperId } });
+    console.log("Navigating to BookStand with paperId:", paperId);
+    navigate("/bookstand", {
+      state: {
+        paperId: paperId,
+      },
+    });
   };
 
   // Handle user options
