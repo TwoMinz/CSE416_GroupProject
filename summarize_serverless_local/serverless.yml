@@ -115,7 +115,6 @@ functions:
           method: post
           cors: true
 
-  # User Profile Functions
   changeUsername:
     handler: src/functions/auth/change-username.handler
     events:
@@ -168,8 +167,8 @@ functions:
   # Paper Processing Functions
   processPaper:
     handler: src/functions/papers/process-paper.handler
-    timeout: 300 # Increased to 5 minutes for OpenAI processing
-    memorySize: 1024 # Increased memory for pdf-parse and OpenAI operations
+    timeout: 300
+    memorySize: 1024
     events:
       - s3:
           bucket: ${self:provider.environment.PAPERS_BUCKET}
@@ -229,6 +228,22 @@ functions:
     events:
       - websocket:
           route: paperProcessStatus
+
+  profileImageUpload:
+    handler: src/functions/profile/profile-image-upload.handler
+    events:
+      - http:
+          path: /api/profile/upload
+          method: post
+          cors: true
+
+  profileImageConfirm:
+    handler: src/functions/profile/profile-image-confirm.handler
+    events:
+      - http:
+          path: /api/profile/confirm
+          method: post
+          cors: true
 
 resources:
   Resources:

@@ -5,11 +5,6 @@ import MdFileReader from "../components/MdFileReader";
 import UserToggle from "../components/UserToggle";
 import { getContentUrl } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import {
-  initWebSocket,
-  addListener,
-  requestPaperStatus,
-} from "../services/websocket";
 
 const BookStand = () => {
   const navigate = useNavigate();
@@ -37,13 +32,6 @@ const BookStand = () => {
       setLoading(false);
     }
   }, [location]);
-
-  // Initialize WebSocket when component mounts if authenticated
-  useEffect(() => {
-    if (authenticated) {
-      initWebSocket();
-    }
-  }, [authenticated]);
 
   // Load paper content when paperId is set
   useEffect(() => {
@@ -78,15 +66,17 @@ const BookStand = () => {
           setSummaryUrl(urlResponse.summaryUrl);
           setProcessingStatus("completed");
         } else {
-          // If no summary URL, show a processing message
+          // If no summary URL, show a processing message without WebSocket updates
           console.log("No summary URL available, showing processing message");
           setMdContent(
-            "# Processing paper...\n\nYour summary will appear here once processing is complete."
+            "# Paper is still processing\n\nThis paper is still being processed. The summary will be available once processing is complete.\n\nPlease check back later or refresh this page."
           );
           setProcessingStatus("processing");
 
-          // Request status update via WebSocket
-          requestPaperStatus(paperId);
+          // Attempt to refresh content after a delay (optional)
+          setTimeout(() => {
+            refreshContent(paperId, token);
+          }, 10000); // Try again after 10 seconds
         }
       } catch (error) {
         console.error("Error loading paper:", error);
@@ -99,45 +89,23 @@ const BookStand = () => {
     loadPaperContent();
   }, [paperId, authenticated, user, navigate]);
 
-  // Set up WebSocket listener for paper status updates
-  useEffect(() => {
-    if (!authenticated || !paperId) return;
+  // Helper function to refresh content for papers still in processing
+  const refreshContent = async (id, token) => {
+    if (!id || !token || processingStatus === "completed") return;
 
-    console.log("Setting up WebSocket listener for paper:", paperId);
+    try {
+      console.log("Refreshing content for paper:", id);
+      const urlResponse = await getContentUrl(id, token);
 
-    const unsubscribe = addListener("PAPER_STATUS_UPDATE", (data) => {
-      console.log("Received paper status update:", data);
-
-      if (data.paperId === paperId) {
-        setProcessingStatus(data.status);
-        console.log("Processing status updated:", data.status);
-
-        // If processing is complete, reload the content URLs
-        if (data.status === "completed") {
-          console.log("Processing completed, refreshing content URLs");
-          const refreshContent = async () => {
-            try {
-              const token = localStorage.getItem("summaraize-token");
-              const urlResponse = await getContentUrl(paperId, token);
-
-              if (urlResponse.summaryUrl) {
-                setSummaryUrl(urlResponse.summaryUrl);
-              }
-            } catch (error) {
-              console.error("Error refreshing content URLs:", error);
-            }
-          };
-
-          refreshContent();
-        }
+      if (urlResponse.summaryUrl) {
+        console.log("Summary now available");
+        setSummaryUrl(urlResponse.summaryUrl);
+        setProcessingStatus("completed");
       }
-    });
-
-    return () => {
-      console.log("Cleaning up WebSocket listener");
-      unsubscribe();
-    };
-  }, [paperId, authenticated]);
+    } catch (error) {
+      console.error("Error refreshing content:", error);
+    }
+  };
 
   const handleGoToHome = () => {
     navigate("/");

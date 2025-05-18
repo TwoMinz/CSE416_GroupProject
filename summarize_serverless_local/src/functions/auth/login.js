@@ -79,7 +79,7 @@ module.exports.handler = async (event) => {
 
     const accessToken = jwt.sign(
       {
-        userId: user.id,
+        userId: String(user.id),
         email: user.email,
       },
       process.env.JWT_SECRET,
@@ -88,19 +88,15 @@ module.exports.handler = async (event) => {
 
     const refreshToken = jwt.sign(
       {
-        userId: user.id,
+        userId: String(user.id),
         tokenId: uuidv4(),
       },
       process.env.JWT_SECRET,
       { expiresIn: refreshExpiresIn }
     );
 
-    // Store refresh token in a separate table if needed
-    // This would be implemented in a production environment
-
-    // Create user response object without password
     const userResponse = {
-      userId: user.id,
+      userId: String(user.id),
       email: user.email,
       username: user.username,
       profilePicture: user.profilePicture,

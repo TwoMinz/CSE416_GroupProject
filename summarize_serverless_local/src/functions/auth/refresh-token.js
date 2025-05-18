@@ -75,7 +75,7 @@ module.exports.handler = async (event) => {
     const userResult = await documentClient
       .get({
         TableName: process.env.USERS_TABLE,
-        Key: { id: userId },
+        Key: { id: Number(userId) },
       })
       .promise();
 
@@ -103,7 +103,7 @@ module.exports.handler = async (event) => {
 
     const accessToken = jwt.sign(
       {
-        userId: user.userId,
+        userId: user.id,
         email: user.email,
       },
       process.env.JWT_SECRET,
@@ -112,7 +112,7 @@ module.exports.handler = async (event) => {
 
     // 사용자 응답 객체 생성 (민감한 정보 제외)
     const userResponse = {
-      userId: user.userId,
+      userId: user.id,
       email: user.email,
       username: user.username,
       profilePicture: user.profilePicture,

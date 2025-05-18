@@ -93,7 +93,7 @@ const handleTokenRefresh = async () => {
   }
 };
 
-// Generic API request function
+// 수정된 apiRequest 함수
 const apiRequest = async (endpoint, method, data = null, token = null) => {
   try {
     // 자동으로 현재 토큰 사용
@@ -124,54 +124,72 @@ const apiRequest = async (endpoint, method, data = null, token = null) => {
 
     const response = await fetch(url, options);
 
-    // 토큰 만료로 인한 401 에러인 경우
-    if (response.status === 401) {
-      const responseData = await response.json();
-
-      // 토큰 관련 에러 메시지 확인
-      if (
-        responseData.message?.includes("token") ||
-        responseData.message?.includes("Token") ||
-        responseData.message?.includes("auth")
-      ) {
-        console.log("Received 401, attempting to refresh token");
+    // 응답을 처리하기 전에 응답 상태 확인
+    if (!response.ok) {
+      // 401 오류인 경우 (인증 오류)
+      if (response.status === 401) {
+        // 응답을 클론하여 여러 번 읽을 수 있도록 함
+        const responseClone = response.clone();
+        let responseData;
 
         try {
-          // 토큰 갱신 시도
-          currentToken = await handleTokenRefresh();
-
-          // 새 토큰으로 요청 재시도
-          const retryOptions = {
-            ...options,
-            headers: getHeaders(currentToken),
-          };
-
-          const retryResponse = await fetch(url, retryOptions);
-          const retryData = await retryResponse.json();
-
-          if (!retryResponse.ok) {
-            throw new Error(
-              retryData.message || "API request failed after token refresh"
-            );
-          }
-
-          return retryData;
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
-          // 로그인 페이지로 리다이렉트하거나 다른 에러 처리
-          window.dispatchEvent(new CustomEvent("auth:required"));
-          throw new Error("Authentication required");
+          responseData = await responseClone.json();
+        } catch (jsonError) {
+          console.error("Error parsing 401 response:", jsonError);
+          throw new Error("Authentication error - invalid response format");
         }
+
+        // 토큰 관련 에러 메시지 확인
+        if (
+          responseData.message?.includes("token") ||
+          responseData.message?.includes("Token") ||
+          responseData.message?.includes("auth")
+        ) {
+          console.log("Received 401, attempting to refresh token");
+
+          try {
+            // 토큰 갱신 시도
+            currentToken = await handleTokenRefresh();
+
+            // 새 토큰으로 요청 재시도
+            const retryOptions = {
+              ...options,
+              headers: getHeaders(currentToken),
+            };
+
+            const retryResponse = await fetch(url, retryOptions);
+
+            if (!retryResponse.ok) {
+              const retryData = await retryResponse.json();
+              throw new Error(
+                retryData.message || "API request failed after token refresh"
+              );
+            }
+
+            // 성공한 재시도 응답 반환
+            return await retryResponse.json();
+          } catch (refreshError) {
+            console.error("Token refresh failed:", refreshError);
+            // 로그인 페이지로 리다이렉트하거나 다른 에러 처리
+            window.dispatchEvent(new CustomEvent("auth:required"));
+            throw new Error("Authentication required");
+          }
+        }
+
+        // 토큰 관련 오류가 아닌 401 오류인 경우
+        throw new Error(responseData.message || "Authentication failed");
+      } else {
+        // 401이 아닌 다른 HTTP 오류인 경우
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ||
+            `API request failed with status ${response.status}`
+        );
       }
     }
 
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      throw new Error(responseData.message || "API request failed");
-    }
-
-    return responseData;
+    // 성공 응답 파싱 및 반환
+    return await response.json();
   } catch (error) {
     console.error(`API Error (${endpoint}):`, error);
     throw error;
@@ -391,6 +409,39 @@ const uploadPaperFile = async (file, token, userId, onProgress) => {
   }
 };
 
+const requestProfileImageUpload = async (
+  fileName,
+  fileType,
+  fileSize,
+  token
+) => {
+  return apiRequest(
+    "/api/profile/upload",
+    "POST",
+    {
+      userId: getCurrentUser().userId,
+      fileName,
+      fileType,
+      fileSize,
+    },
+    token
+  );
+};
+
+// 프로필 이미지 업로드 확인
+const confirmProfileImageUpload = async (fileKey, uploadSuccess, token) => {
+  return apiRequest(
+    "/api/profile/confirm",
+    "POST",
+    {
+      userId: getCurrentUser().userId,
+      fileKey,
+      uploadSuccess,
+    },
+    token
+  );
+};
+
 export {
   apiRequest,
   requestFileUpload,
@@ -401,4 +452,6 @@ export {
   getContentUrl,
   searchPaper,
   uploadPaperFile,
+  requestProfileImageUpload,
+  confirmProfileImageUpload,
 };
