@@ -5,10 +5,9 @@ import SimplePopup, { usePopup } from "../components/SimplePopup";
 import {
   changeUsername,
   changePassword,
-  changeProfileImage,
+  uploadProfileImage,
+  changeLanguage,
 } from "../services/auth";
-import { requestFileUpload, uploadToS3, confirmUpload } from "../services/api";
-import { uploadProfileImage } from "../services/auth";
 
 // Language options for display
 const LANGUAGE_MAP = {
@@ -30,6 +29,7 @@ const Setting = () => {
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isChangingLanguage, setIsChangingLanguage] = useState(false);
 
   // Password change states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -108,16 +108,51 @@ const Setting = () => {
     }
   };
 
-  const handleLanguageChange = (e) => {
-    const newValue = e.target.value;
-    setLanguage(newValue);
+  const handleLanguageChange = async (e) => {
+    const newLangValue = parseInt(e.target.value);
 
-    // Here you would typically make an API call to update the language preference
-    // For now, we'll just show a popup
-    openPopup(
-      "Language Changed",
-      `Language has been changed to ${LANGUAGE_MAP[newValue] || newValue}`
-    );
+    // If same language, no need to update
+    if (newLangValue === language) {
+      return;
+    }
+
+    setIsChangingLanguage(true);
+
+    try {
+      // Call the API to update the user's language preference
+      const result = await changeLanguage(user.userId, newLangValue);
+
+      if (result.success) {
+        setLanguage(newLangValue);
+        // Update user in context
+        if (updateUser) {
+          updateUser(result.user);
+        }
+        openPopup(
+          "Language Changed",
+          `Language has been changed to ${
+            LANGUAGE_MAP[newLangValue] || newLangValue
+          }. Newly summarized papers will use this language.`
+        );
+      } else {
+        openPopup(
+          "Error",
+          result.message || "Failed to update language preference"
+        );
+        // Revert to original language
+        setLanguage(user.transLang || 1);
+      }
+    } catch (error) {
+      console.error("Error changing language:", error);
+      openPopup(
+        "Error",
+        "An error occurred while updating your language preference"
+      );
+      // Revert to original language
+      setLanguage(user.transLang || 1);
+    } finally {
+      setIsChangingLanguage(false);
+    }
   };
 
   // Toggle password change form
@@ -430,7 +465,10 @@ const Setting = () => {
                     <select
                       value={language}
                       onChange={handleLanguageChange}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl w-full appearance-none cursor-pointer text-center pr-8 shadow-sm transition-colors font-medium"
+                      className={`${
+                        isChangingLanguage ? "opacity-70 cursor-wait" : ""
+                      } bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl w-full appearance-none cursor-pointer text-center pr-8 shadow-sm transition-colors font-medium`}
+                      disabled={isChangingLanguage}
                     >
                       {Object.entries(LANGUAGE_MAP).map(([code, name]) => (
                         <option key={code} value={code}>
@@ -439,15 +477,46 @@ const Setting = () => {
                       ))}
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white">
-                      <svg
-                        className="fill-current h-4 w-4"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                      </svg>
+                      {isChangingLanguage ? (
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                      ) : (
+                        <svg
+                          className="fill-current h-4 w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                        </svg>
+                      )}
                     </div>
                   </div>
+                  {isChangingLanguage && (
+                    <p className="text-xs text-blue-600 mt-1 font-medium">
+                      Updating language preference...
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Language for paper summaries
+                  </p>
                 </div>
               </div>
 

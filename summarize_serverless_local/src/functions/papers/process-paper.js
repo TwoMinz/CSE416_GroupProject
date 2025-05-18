@@ -211,145 +211,6 @@ const extractTextFromPDF = async (pdfBuffer) => {
   }
 };
 
-// Enhanced OpenAI processing with structured output format
-const processWithOpenAI = async (text, paperId) => {
-  return retryWithBackoff(
-    async () => {
-      try {
-        console.log(`[PROCESS-PAPER] Processing text with OpenAI...`);
-        console.log(`[PROCESS-PAPER] Text length: ${text.length} characters`);
-
-        // Use chunking strategy for long texts
-        if (text.length > 15000) {
-          return await processLongTextWithOpenAI(text, paperId);
-        }
-
-        // Improved structured prompt with JSON schema described in the prompt
-        const prompt = `
-Analyze this research paper and extract structured information according to the following JSON format:
-
-{
-  "title": "The title of the research paper",
-  "authors": ["Author 1", "Author 2", ...],
-  "publicationYear": 2023,
-  "abstract": [
-    {"point": "Key point from abstract", "page": 1},
-    {"point": "Another key point from abstract", "page": 1}
-  ],
-  "introduction": [
-    {"point": "Key point from introduction", "page": 2},
-    {"point": "Another key point from introduction", "page": 3}
-  ],
-  "methodology": [
-    {"point": "Key methodological approach", "page": 4},
-    {"point": "Another methodological point", "page": 5}
-  ],
-  "results": [
-    {"point": "Important result", "page": 6},
-    {"point": "Another important result", "page": 7}
-  ],
-  "discussion": [
-    {"point": "Discussion point", "page": 8},
-    {"point": "Another discussion point", "page": 9}
-  ],
-  "conclusions": [
-    {"point": "Conclusion", "page": 10},
-    {"point": "Another conclusion", "page": 10}
-  ],
-  "keyTerms": [
-    {"term": "Technical term", "definition": "Definition of the term"},
-    {"term": "Another term", "definition": "Its definition"}
-  ],
-  "citation": {
-    "mla": "MLA format citation",
-    "apa": "APA format citation"
-  }
-}
-
-Paper text:
-${text}
-
-For each section (abstract, introduction, methodology, etc.), provide key points with their corresponding page numbers. If a section is not present in the paper, return an empty array for that section.
-
-Make sure all page number references are accurate and all key points are factual statements from the paper.
-Your response must be a valid JSON object that follows the format above precisely.`;
-
-        const response = await openai.chat.completions.create({
-          model: "gpt-4-turbo-preview",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a research paper analysis expert. Extract detailed, structured information from academic papers with accurate page references. Always respond with valid JSON.",
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.2,
-          max_tokens: 3000,
-          response_format: { type: "json_object" }, // Just specify json_object without schema
-        });
-
-        if (!response.choices || !response.choices[0]) {
-          throw new Error("Invalid response from OpenAI");
-        }
-
-        // Parse the structured JSON response
-        const paperAnalysis = JSON.parse(response.choices[0].message.content);
-
-        // Generate markdown from structured data
-        const markdownContent = generateMarkdownFromStructured(paperAnalysis);
-
-        // Add all key points to a single array for database
-        const keyPoints = [
-          ...(paperAnalysis.abstract || []),
-          ...(paperAnalysis.introduction || []),
-          ...(paperAnalysis.methodology || []),
-          ...(paperAnalysis.results || []),
-          ...(paperAnalysis.discussion || []),
-          ...(paperAnalysis.conclusions || []),
-        ];
-
-        // Create analysis object for the database
-        const analysis = {
-          title: paperAnalysis.title,
-          keyPoints: keyPoints,
-          citation: paperAnalysis.citation || {
-            apa: "",
-            mla: "",
-            authors: paperAnalysis.authors || [],
-            year: paperAnalysis.publicationYear || new Date().getFullYear(),
-          },
-        };
-
-        console.log(`[PROCESS-PAPER] OpenAI structured analysis completed`);
-        return {
-          analysis,
-          markdownContent,
-          rawAnalysis: paperAnalysis,
-        };
-      } catch (error) {
-        console.error(`[PROCESS-PAPER] Error processing with OpenAI:`, error);
-
-        // Handle specific OpenAI errors
-        if (error.status === 429) {
-          throw new Error("OpenAI rate limit reached. Please try again later.");
-        } else if (error.status === 401) {
-          throw new Error("Invalid OpenAI API key");
-        } else if (error.status === 500) {
-          throw new Error("OpenAI server error. Please try again later.");
-        } else {
-          throw new Error(`OpenAI API error: ${error.message}`);
-        }
-      }
-    },
-    3,
-    2000
-  ); // 3 retries with 2 second initial delay
-};
-
 // Function to generate markdown from structured data
 const generateMarkdownFromStructured = (paperAnalysis) => {
   let markdown = `# Summary of "${paperAnalysis.title}"\n\n`;
@@ -643,15 +504,15 @@ const mergeChunkAnalyses = (chunkAnalyses) => {
 };
 
 // Generate citation formats from combined information
-const generateCitationFromInfo = (combinedAnalysis) => {
+const generateCitationFromInfo = (combinedAnalysis, language) => {
   const citation = {
     authors: combinedAnalysis.authors || [],
     year: combinedAnalysis.publicationYear || new Date().getFullYear(),
     title: combinedAnalysis.title || "Untitled Paper",
-    journal: combinedAnalysis.citationInfo.journalName || "",
-    volume: combinedAnalysis.citationInfo.volume || "",
-    pages: combinedAnalysis.citationInfo.pages || "",
-    doi: combinedAnalysis.citationInfo.doi || "",
+    journal: combinedAnalysis.citationInfo?.journalName || "",
+    volume: combinedAnalysis.citationInfo?.volume || "",
+    pages: combinedAnalysis.citationInfo?.pages || "",
+    doi: combinedAnalysis.citationInfo?.doi || "",
   };
 
   // Generate APA format
@@ -667,9 +528,24 @@ const generateCitationFromInfo = (combinedAnalysis) => {
           .join(", ")
       : "Unknown Author";
 
+  // Adjust conjunction based on language
+  let conjunction = "";
+  if (language === "Korean") {
+    conjunction = "및";
+  } else if (language === "Spanish") {
+    conjunction = "y";
+  } else if (language === "French") {
+    conjunction = "et";
+  } else {
+    conjunction = "&"; // Default English
+  }
+
   if (citation.authors.length > 1) {
     const lastAuthor = authorString.split(", ").pop();
-    authorString = authorString.replace(`, ${lastAuthor}`, ` & ${lastAuthor}`);
+    authorString = authorString.replace(
+      `, ${lastAuthor}`,
+      ` ${conjunction} ${lastAuthor}`
+    );
   }
 
   citation.apa = `${authorString} (${citation.year}). ${citation.title}`;
@@ -687,6 +563,7 @@ const generateCitationFromInfo = (combinedAnalysis) => {
       : "Unknown Author";
 
   if (citation.authors.length > 1) {
+    // "et al." is used in all languages in academic context
     authorString = citation.authors[0] + " et al.";
   }
 
@@ -705,62 +582,6 @@ const generateCitationFromInfo = (combinedAnalysis) => {
     authors: citation.authors,
     year: citation.year,
   };
-};
-
-// Generate markdown from combined analysis
-const generateMarkdownFromCombined = (combinedAnalysis) => {
-  let markdown = `# Summary of "${
-    combinedAnalysis.title || "Untitled Paper"
-  }"\n\n`;
-
-  if (combinedAnalysis.authors && combinedAnalysis.authors.length > 0) {
-    markdown += `## Authors\n${combinedAnalysis.authors.join(", ")}\n\n`;
-  }
-
-  if (combinedAnalysis.publicationYear) {
-    markdown += `## Publication Year\n${combinedAnalysis.publicationYear}\n\n`;
-  }
-
-  // Add each section
-  const sections = {
-    Abstract: combinedAnalysis.sections.abstract,
-    Introduction: combinedAnalysis.sections.introduction,
-    Methodology: combinedAnalysis.sections.methodology,
-    Results: combinedAnalysis.sections.results,
-    Discussion: combinedAnalysis.sections.discussion,
-    Conclusions: combinedAnalysis.sections.conclusions,
-  };
-
-  Object.entries(sections).forEach(([sectionName, points]) => {
-    if (points && points.length > 0) {
-      // Sort points by page number
-      points.sort((a, b) => a.page - b.page);
-
-      markdown += `## ${sectionName}\n`;
-      points.forEach((point) => {
-        markdown += `- ${point.point} (p.${point.page})\n`;
-      });
-      markdown += "\n";
-    }
-  });
-
-  // Add key terms
-  if (combinedAnalysis.keyTerms && combinedAnalysis.keyTerms.length > 0) {
-    markdown += `## Key Terms\n`;
-    combinedAnalysis.keyTerms.forEach((term) => {
-      markdown += `- **${term.term}**: ${term.definition}\n`;
-    });
-    markdown += "\n";
-  }
-
-  // Generate and add citations
-  const citation = generateCitationFromInfo(combinedAnalysis);
-
-  markdown += `## Citations\n\n`;
-  markdown += `### MLA Format\n${citation.mla}\n\n`;
-  markdown += `### APA Format\n${citation.apa}\n\n`;
-
-  return markdown;
 };
 
 // Process a paper - extract text, analyze, summarize, etc.
@@ -803,6 +624,37 @@ const processPaper = async (paperId, fileKey, userId) => {
       "Downloading PDF from S3..."
     );
 
+    // Get the user's language preference
+    let userLanguagePreference = 1; // Default to English
+    try {
+      console.log(
+        `[PROCESS-PAPER] Looking up language preference for user ID: ${userId}`
+      );
+      const userResult = await documentClient
+        .get({
+          TableName: process.env.USERS_TABLE,
+          Key: { id: parseInt(userId) },
+        })
+        .promise();
+
+      if (userResult.Item && userResult.Item.transLang) {
+        userLanguagePreference = userResult.Item.transLang;
+        console.log(
+          `[PROCESS-PAPER] User language preference found: ${userLanguagePreference}`
+        );
+      } else {
+        console.log(
+          `[PROCESS-PAPER] No language preference found for user, using default (English)`
+        );
+      }
+    } catch (userError) {
+      console.error(
+        `[PROCESS-PAPER] Error getting user language preference:`,
+        userError
+      );
+      // Continue with default language if error occurs
+    }
+
     // Download file from S3
     console.log(`[PROCESS-PAPER] Downloading file from S3: ${fileKey}`);
     const fileData = await s3
@@ -822,7 +674,7 @@ const processPaper = async (paperId, fileKey, userId) => {
 
     const extractedText = await extractTextFromPDF(fileData.Body);
 
-    // Process with OpenAI
+    // Process with OpenAI using the user's language preference
     await sendStatusUpdate(
       userId,
       paperId,
@@ -830,10 +682,11 @@ const processPaper = async (paperId, fileKey, userId) => {
       "Analyzing content with AI..."
     );
 
-    // Use the improved OpenAI processing function
-    const { analysis, markdownContent } = await processWithOpenAI(
+    // Use the multilingual OpenAI processing function
+    const { analysis, markdownContent } = await processWithOpenAIMultilingual(
       extractedText,
-      paperId
+      paperId,
+      userLanguagePreference
     );
 
     // Use the already formatted markdown content from OpenAI
@@ -855,7 +708,7 @@ const processPaper = async (paperId, fileKey, userId) => {
       })
       .promise();
 
-    // Update paper record with all the information
+    // Update paper record with all the information including the language used
     await documentClient
       .update({
         TableName: process.env.PAPERS_TABLE,
@@ -864,13 +717,15 @@ const processPaper = async (paperId, fileKey, userId) => {
           SET #status = :status, 
               summaryKey = :summaryKey, 
               lastUpdated = :timestamp,
-              title = :title
+              title = :title,
+              language = :language
         `,
         ExpressionAttributeValues: {
           ":status": "completed",
           ":summaryKey": summaryKey,
           ":timestamp": new Date().toISOString(),
           ":title": analysis.title || "Untitled Paper",
+          ":language": userLanguagePreference,
         },
         ExpressionAttributeNames: {
           "#status": "status",
@@ -930,6 +785,438 @@ const processPaper = async (paperId, fileKey, userId) => {
       error: error.message,
     };
   }
+};
+
+const processWithOpenAIMultilingual = async (text, paperId, languageCode) => {
+  return retryWithBackoff(
+    async () => {
+      try {
+        console.log(
+          `[PROCESS-PAPER] Processing text with OpenAI in language code: ${languageCode}...`
+        );
+        console.log(`[PROCESS-PAPER] Text length: ${text.length} characters`);
+
+        // Determine target language based on language code
+        let targetLanguage = "English";
+        switch (languageCode) {
+          case 2:
+            targetLanguage = "Korean";
+            break;
+          case 3:
+            targetLanguage = "Spanish";
+            break;
+          case 4:
+            targetLanguage = "French";
+            break;
+          default:
+            targetLanguage = "English"; // Default to English
+        }
+
+        // Use chunking strategy for long texts
+        if (text.length > 15000) {
+          return await processLongTextWithOpenAIMultilingual(
+            text,
+            paperId,
+            targetLanguage
+          );
+        }
+
+        // Improved structured prompt with language specification
+        const prompt = `
+Analyze this research paper and extract structured information according to the following JSON format.
+Provide your response in ${targetLanguage} language.
+
+{
+  "title": "The title of the research paper",
+  "authors": ["Author 1", "Author 2", ...],
+  "publicationYear": 2023,
+  "abstract": [
+    {"point": "Key point from abstract", "page": 1},
+    {"point": "Another key point from abstract", "page": 1}
+  ],
+  "introduction": [
+    {"point": "Key point from introduction", "page": 2},
+    {"point": "Another key point from introduction", "page": 3}
+  ],
+  "methodology": [
+    {"point": "Key methodological approach", "page": 4},
+    {"point": "Another methodological point", "page": 5}
+  ],
+  "results": [
+    {"point": "Important result", "page": 6},
+    {"point": "Another important result", "page": 7}
+  ],
+  "discussion": [
+    {"point": "Discussion point", "page": 8},
+    {"point": "Another discussion point", "page": 9}
+  ],
+  "conclusions": [
+    {"point": "Conclusion", "page": 10},
+    {"point": "Another conclusion", "page": 10}
+  ],
+  "keyTerms": [
+    {"term": "Technical term", "definition": "Definition of the term"},
+    {"term": "Another term", "definition": "Its definition"}
+  ],
+  "citation": {
+    "mla": "MLA format citation",
+    "apa": "APA format citation"
+  }
+}
+
+Paper text:
+${text}
+
+For each section (abstract, introduction, methodology, etc.), provide key points with their corresponding page numbers in ${targetLanguage} language. If a section is not present in the paper, return an empty array for that section.
+
+Make sure all page number references are accurate and all key points are factual statements from the paper.
+Ensure all text is in ${targetLanguage} language.
+Your response must be a valid JSON object that follows the format above precisely.`;
+
+        const response = await openai.chat.completions.create({
+          model: "gpt-4-turbo-preview",
+          messages: [
+            {
+              role: "system",
+              content: `You are a research paper analysis expert who provides responses in ${targetLanguage} language. Extract detailed, structured information from academic papers with accurate page references. Always respond with valid JSON.`,
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.2,
+          max_tokens: 3000,
+          response_format: { type: "json_object" }, // Just specify json_object without schema
+        });
+
+        if (!response.choices || !response.choices[0]) {
+          throw new Error("Invalid response from OpenAI");
+        }
+
+        // Parse the structured JSON response
+        const paperAnalysis = JSON.parse(response.choices[0].message.content);
+
+        // Generate markdown from structured data
+        const markdownContent = generateMarkdownFromStructured(
+          paperAnalysis,
+          targetLanguage
+        );
+
+        // Add all key points to a single array for database
+        const keyPoints = [
+          ...(paperAnalysis.abstract || []),
+          ...(paperAnalysis.introduction || []),
+          ...(paperAnalysis.methodology || []),
+          ...(paperAnalysis.results || []),
+          ...(paperAnalysis.discussion || []),
+          ...(paperAnalysis.conclusions || []),
+        ];
+
+        // Create analysis object for the database
+        const analysis = {
+          title: paperAnalysis.title,
+          keyPoints: keyPoints,
+          citation: paperAnalysis.citation || {
+            apa: "",
+            mla: "",
+            authors: paperAnalysis.authors || [],
+            year: paperAnalysis.publicationYear || new Date().getFullYear(),
+          },
+          language: targetLanguage,
+        };
+
+        console.log(
+          `[PROCESS-PAPER] OpenAI structured analysis completed in ${targetLanguage}`
+        );
+        return {
+          analysis,
+          markdownContent,
+          rawAnalysis: paperAnalysis,
+        };
+      } catch (error) {
+        console.error(`[PROCESS-PAPER] Error processing with OpenAI:`, error);
+
+        // Handle specific OpenAI errors
+        if (error.status === 429) {
+          throw new Error("OpenAI rate limit reached. Please try again later.");
+        } else if (error.status === 401) {
+          throw new Error("Invalid OpenAI API key");
+        } else if (error.status === 500) {
+          throw new Error("OpenAI server error. Please try again later.");
+        } else {
+          throw new Error(`OpenAI API error: ${error.message}`);
+        }
+      }
+    },
+    3,
+    2000
+  ); // 3 retries with 2 second initial delay
+};
+
+const processLongTextWithOpenAIMultilingual = async (
+  text,
+  paperId,
+  targetLanguage
+) => {
+  const MAX_CHUNK_SIZE = 10000;
+  const chunks = chunkText(text, MAX_CHUNK_SIZE);
+  console.log(`[PROCESS-PAPER] Split text into ${chunks.length} chunks`);
+
+  // Process each chunk with structured output
+  const chunkAnalyses = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(
+      `[PROCESS-PAPER] Processing chunk ${i + 1}/${
+        chunks.length
+      } in ${targetLanguage}`
+    );
+
+    // Process chunk with structured output but without schema parameter
+    const prompt = `
+You are analyzing chunk ${i + 1} of ${chunks.length} of a research paper.
+Extract structured information from this chunk according to the following JSON format.
+Provide your response in ${targetLanguage} language.
+
+{
+  "title": "Title of the paper if found in this chunk",
+  "authors": ["Author 1", "Author 2", ...],
+  "publicationYear": 2023,
+  "sectionKeyPoints": {
+    "abstract": [
+      {"point": "Key point from abstract", "page": 1},
+      {"point": "Another key point from abstract", "page": 1}
+    ],
+    "introduction": [
+      {"point": "Key point from introduction", "page": 2},
+      {"point": "Another key point from introduction", "page": 3}
+    ],
+    "methodology": [
+      {"point": "Key methodological approach", "page": 4},
+      {"point": "Another methodological point", "page": 5}
+    ],
+    "results": [
+      {"point": "Important result", "page": 6},
+      {"point": "Another important result", "page": 7}
+    ],
+    "discussion": [
+      {"point": "Discussion point", "page": 8},
+      {"point": "Another discussion point", "page": 9}
+    ],
+    "conclusions": [
+      {"point": "Conclusion", "page": 10},
+      {"point": "Another conclusion", "page": 10}
+    ]
+  },
+  "keyTerms": [
+    {"term": "Technical term", "definition": "Definition of the term"},
+    {"term": "Another term", "definition": "Its definition"}
+  ],
+  "citationInfo": {
+    "journalName": "Journal name if found",
+    "volume": "Volume info if found",
+    "pages": "Page range if found",
+    "doi": "DOI if found"
+  }
+}
+
+Text chunk:
+${chunks[i]}
+
+Identify and extract:
+1. Paper title, authors, and publication year if present
+2. Key points from any sections (Abstract, Introduction, Methodology, Results, Discussion, Conclusion) with page numbers
+3. Technical terms with definitions
+4. Citation information
+
+Only include information that is explicitly present in this chunk. For key points, always include the page number where they appear.
+Ensure all text is in ${targetLanguage} language.
+Your response must be a valid JSON object that follows the format above precisely.
+`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are a research paper analysis expert who provides responses in ${targetLanguage} language. Extract structured information from research paper sections. Always respond with valid JSON.`,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.2,
+      response_format: { type: "json_object" }, // Just specify json_object without schema
+    });
+
+    const chunkAnalysis = JSON.parse(response.choices[0].message.content);
+    chunkAnalyses.push(chunkAnalysis);
+  }
+
+  // Combine all chunks into a unified analysis
+  const combinedAnalysis = mergeChunkAnalyses(chunkAnalyses);
+
+  // Generate citation formats if we have enough information
+  const citation = generateCitationFromInfo(combinedAnalysis, targetLanguage);
+
+  // Generate markdown from the combined analysis
+  const markdownContent = generateMarkdownFromCombined(
+    combinedAnalysis,
+    targetLanguage
+  );
+
+  // Flatten all key points for database storage
+  const allKeyPoints = [];
+  Object.keys(combinedAnalysis.sections).forEach((section) => {
+    if (
+      combinedAnalysis.sections[section] &&
+      combinedAnalysis.sections[section].length > 0
+    ) {
+      combinedAnalysis.sections[section].forEach((point) => {
+        allKeyPoints.push(point);
+      });
+    }
+  });
+
+  const analysis = {
+    title: combinedAnalysis.title,
+    keyPoints: allKeyPoints,
+    citation: citation,
+    language: targetLanguage,
+  };
+
+  return {
+    analysis,
+    markdownContent,
+    rawAnalysis: combinedAnalysis,
+  };
+};
+
+// Similarly update generateMarkdownFromCombined to handle language
+const generateMarkdownFromCombined = (combinedAnalysis, language) => {
+  // Define section titles based on language
+  const sectionTitles = {
+    English: {
+      summary: "Summary of",
+      authors: "Authors",
+      publicationYear: "Publication Year",
+      abstract: "Abstract",
+      introduction: "Introduction",
+      methodology: "Methodology",
+      results: "Results",
+      discussion: "Discussion",
+      conclusions: "Conclusions",
+      keyTerms: "Key Terms",
+      citations: "Citations",
+      mlaFormat: "MLA Format",
+      apaFormat: "APA Format",
+    },
+    Korean: {
+      summary: "요약:",
+      authors: "저자",
+      publicationYear: "출판 연도",
+      abstract: "초록",
+      introduction: "서론",
+      methodology: "방법론",
+      results: "결과",
+      discussion: "논의",
+      conclusions: "결론",
+      keyTerms: "핵심 용어",
+      citations: "인용",
+      mlaFormat: "MLA 형식",
+      apaFormat: "APA 형식",
+    },
+    Spanish: {
+      summary: "Resumen de",
+      authors: "Autores",
+      publicationYear: "Año de publicación",
+      abstract: "Resumen",
+      introduction: "Introducción",
+      methodology: "Metodología",
+      results: "Resultados",
+      discussion: "Discusión",
+      conclusions: "Conclusiones",
+      keyTerms: "Términos clave",
+      citations: "Citas",
+      mlaFormat: "Formato MLA",
+      apaFormat: "Formato APA",
+    },
+    French: {
+      summary: "Résumé de",
+      authors: "Auteurs",
+      publicationYear: "Année de publication",
+      abstract: "Résumé",
+      introduction: "Introduction",
+      methodology: "Méthodologie",
+      results: "Résultats",
+      discussion: "Discussion",
+      conclusions: "Conclusions",
+      keyTerms: "Termes clés",
+      citations: "Citations",
+      mlaFormat: "Format MLA",
+      apaFormat: "Format APA",
+    },
+  };
+
+  // Default to English if language not found
+  const titles = sectionTitles[language] || sectionTitles["English"];
+
+  let markdown = `# ${titles.summary} "${
+    combinedAnalysis.title || "Untitled Paper"
+  }"\n\n`;
+
+  if (combinedAnalysis.authors && combinedAnalysis.authors.length > 0) {
+    markdown += `## ${titles.authors}\n${combinedAnalysis.authors.join(
+      ", "
+    )}\n\n`;
+  }
+
+  if (combinedAnalysis.publicationYear) {
+    markdown += `## ${titles.publicationYear}\n${combinedAnalysis.publicationYear}\n\n`;
+  }
+
+  // Add each section
+  const sections = {
+    [titles.abstract]: combinedAnalysis.sections.abstract,
+    [titles.introduction]: combinedAnalysis.sections.introduction,
+    [titles.methodology]: combinedAnalysis.sections.methodology,
+    [titles.results]: combinedAnalysis.sections.results,
+    [titles.discussion]: combinedAnalysis.sections.discussion,
+    [titles.conclusions]: combinedAnalysis.sections.conclusions,
+  };
+
+  Object.entries(sections).forEach(([sectionName, points]) => {
+    if (points && points.length > 0) {
+      // Sort points by page number
+      points.sort((a, b) => a.page - b.page);
+
+      markdown += `## ${sectionName}\n`;
+      points.forEach((point) => {
+        markdown += `- ${point.point} (p.${point.page})\n`;
+      });
+      markdown += "\n";
+    }
+  });
+
+  // Add key terms
+  if (combinedAnalysis.keyTerms && combinedAnalysis.keyTerms.length > 0) {
+    markdown += `## ${titles.keyTerms}\n`;
+    combinedAnalysis.keyTerms.forEach((term) => {
+      markdown += `- **${term.term}**: ${term.definition}\n`;
+    });
+    markdown += "\n";
+  }
+
+  // Generate and add citations
+  const citation = generateCitationFromInfo(combinedAnalysis, language);
+
+  markdown += `## ${titles.citations}\n\n`;
+  markdown += `### ${titles.mlaFormat}\n${citation.mla}\n\n`;
+  markdown += `### ${titles.apaFormat}\n${citation.apa}\n\n`;
+
+  return markdown;
 };
 
 module.exports.handler = async (event) => {

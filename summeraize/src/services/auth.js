@@ -282,111 +282,102 @@ const uploadProfileImage = async (file) => {
       throw new Error("Authorization token is required");
     }
 
-    // 파일 유형 검증
+    // File type validation
     const validTypes = ["image/jpeg", "image/png", "image/jpg"];
     if (!validTypes.includes(file.type)) {
       throw new Error("Only JPG and PNG images are allowed");
     }
 
-    // 1단계: 업로드 URL 요청
-    const uploadRequestUrl = `${config.apiBaseUrl}/api/profile/upload`;
-    console.log("Requesting upload URL from:", uploadRequestUrl);
+    // File size validation (max 2MB)
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error("Image size should not exceed 2MB");
+    }
 
-    const uploadRequestResponse = await fetch(uploadRequestUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
+    // Step 1: Request upload URL
+    console.log("Requesting upload URL for profile image");
+    const uploadRequestResponse = await apiRequest(
+      "/api/profile/upload",
+      "POST",
+      {
         userId: user.userId,
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
-      }),
-    });
-
-    if (!uploadRequestResponse.ok) {
-      const errorText = await uploadRequestResponse.text();
-      console.error("Upload request failed:", errorText);
-      throw new Error(
-        `Failed to request upload URL: ${uploadRequestResponse.statusText}`
-      );
-    }
-
-    const uploadRequest = await uploadRequestResponse.json();
-
-    if (!uploadRequest.success) {
-      throw new Error(uploadRequest.message || "Failed to get upload URL");
-    }
-
-    // 2단계: S3에 업로드
-    console.log("Uploading file to S3");
-    const formData = new FormData();
-
-    // formData에 필드 추가
-    Object.entries(uploadRequest.directUploadConfig.fields).forEach(
-      ([key, value]) => {
-        formData.append(key, value);
-      }
+      },
+      token
     );
 
-    // 파일 추가
-    formData.append("file", file);
-
-    // S3에 업로드
-    const s3UploadResponse = await fetch(uploadRequest.directUploadConfig.url, {
-      method: "POST",
-      body: formData,
-      credentials: "omit", // CORS 처리
-    });
-
-    if (!s3UploadResponse.ok) {
-      const errorText = await s3UploadResponse.text();
-      console.error("S3 upload failed:", errorText);
-      throw new Error(`S3 upload failed: ${s3UploadResponse.statusText}`);
-    }
-
-    // 3단계: 업로드 확인
-    const confirmUrl = `${config.apiBaseUrl}/api/profile/confirm`;
-    console.log("Confirming upload at:", confirmUrl);
-
-    const confirmResponse = await fetch(confirmUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        userId: user.userId,
-        fileKey: uploadRequest.fileKey,
-        uploadSuccess: true,
-      }),
-    });
-
-    if (!confirmResponse.ok) {
-      const errorText = await confirmResponse.text();
-      console.error("Confirm upload failed:", errorText);
+    if (!uploadRequestResponse.success) {
       throw new Error(
-        `Failed to confirm upload: ${confirmResponse.statusText}`
+        uploadRequestResponse.message || "Failed to get upload URL"
       );
     }
 
-    const confirmResult = await confirmResponse.json();
+    // Step 2: Upload to S3
+    console.log("Uploading profile image to S3");
+    await uploadToS3(
+      file,
+      uploadRequestResponse.directUploadConfig.url,
+      uploadRequestResponse.directUploadConfig.fields
+    );
 
-    if (!confirmResult.success) {
-      throw new Error(confirmResult.message || "Failed to confirm upload");
+    // Step 3: Confirm upload
+    console.log("Confirming profile image upload");
+    const confirmResponse = await apiRequest(
+      "/api/profile/confirm",
+      "POST",
+      {
+        userId: user.userId,
+        fileKey: uploadRequestResponse.fileKey,
+        uploadSuccess: true,
+      },
+      token
+    );
+
+    if (!confirmResponse.success) {
+      throw new Error(
+        confirmResponse.message || "Failed to confirm profile image upload"
+      );
     }
 
-    // 사용자 로컬 스토리지 업데이트
-    if (confirmResult.user) {
-      localStorage.setItem(USER_KEY, JSON.stringify(confirmResult.user));
+    // Update user in local storage
+    if (confirmResponse.user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(confirmResponse.user));
     }
 
     console.log("Profile image uploaded successfully");
-    return confirmResult;
+    return confirmResponse;
   } catch (error) {
     console.error("Profile image upload error:", error);
+    throw error;
+  }
+};
+
+const changeLanguage = async (userId, languageCode) => {
+  try {
+    console.log(`Changing language for user ${userId} to: ${languageCode}`);
+    const token = getToken();
+
+    const response = await apiRequest(
+      "/api/auth/modify/language",
+      "POST",
+      {
+        userId,
+        languageCode,
+      },
+      token
+    );
+
+    if (response.success && response.user) {
+      // Update user in local storage
+      localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+      console.log("Language preference updated successfully:", response.user);
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Error changing language preference:", error);
     throw error;
   }
 };
@@ -403,4 +394,5 @@ export {
   changePassword,
   changeProfileImage,
   uploadProfileImage,
+  changeLanguage,
 };
