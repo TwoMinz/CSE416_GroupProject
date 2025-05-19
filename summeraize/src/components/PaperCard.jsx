@@ -36,6 +36,7 @@ const PaperCard = ({ paper, onToggleStar, onClick }) => {
       <div className="h-12"></div>
 
       {/* Star icon - absolute positioned */}
+      {/*
       <div className="absolute left-3 top-3 z-10">
         <button
           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -49,7 +50,7 @@ const PaperCard = ({ paper, onToggleStar, onClick }) => {
           />
         </button>
       </div>
-
+      */}
       {/* PDF icon - absolute positioned */}
       <div className="absolute right-3 top-3 z-10">
         <img src={pdfIcon} alt="PDF" className="w-8 h-8" />
