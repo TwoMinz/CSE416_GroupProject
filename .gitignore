@@ -122,3 +122,5 @@ summarize_serverless_local/src/utils/aws-configure.js
 summeraize/src/config.js
 
 summeraize/src/NewConfig.js
+
+vercel.json
