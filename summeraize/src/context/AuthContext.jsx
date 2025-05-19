@@ -2,54 +2,58 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import {
   login as authLogin,
   logout as authLogout,
-  getCurrentUser,
-  getToken,
   refreshToken,
-  changeUsername as updateUsername,
-  changePassword as updatePassword,
-  changeProfileImage as updateProfileImage,
-  changeLanguage as updateLanguage,
+  getToken,
+  getCurrentUser,
+  isAuthenticated,
 } from "../services/auth";
 
-// Create the auth context
-const AuthContext = createContext(null);
+// Create the AuthContext
+const AuthContext = createContext();
 
-// Auth provider component
+// AuthProvider component to wrap the application
 export const AuthProvider = ({ children }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state on mount
+  // Check authentication status on initial load and token changes
   useEffect(() => {
-    const initAuth = async () => {
+    const checkAuth = async () => {
       try {
-        // Check if token exists
-        const token = getToken();
-        if (token) {
-          // Get current user
+        // Check if there's a token and user in localStorage
+        const isUserAuthenticated = isAuthenticated;
+        if (isUserAuthenticated) {
           const currentUser = getCurrentUser();
-
-          if (currentUser) {
-            setUser(currentUser);
-            setAuthenticated(true);
-          } else {
-            // Try to refresh token if user info missing
+          setUser(currentUser);
+          setAuthenticated(true);
+        } else {
+          // If token exists but is expired, try to refresh it
+          const token = getToken();
+          if (token) {
             try {
               const result = await refreshToken();
               if (result.success) {
                 setUser(result.user);
                 setAuthenticated(true);
+              } else {
+                // Clear state if refresh fails
+                setUser(null);
+                setAuthenticated(false);
               }
-            } catch (refreshError) {
-              // Reset auth state on refresh error
+            } catch (error) {
+              console.error("Auth refresh error:", error);
               setUser(null);
               setAuthenticated(false);
             }
+          } else {
+            // No token found, user is not authenticated
+            setUser(null);
+            setAuthenticated(false);
           }
         }
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        console.error("Auth check error:", error);
         setUser(null);
         setAuthenticated(false);
       } finally {
@@ -57,65 +61,84 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    initAuth();
+    checkAuth();
+
+    // Listen for storage events (for multi-tab support)
+    const handleStorageChange = (e) => {
+      if (e.key === "summaraize-token" || e.key === "summaraize-user") {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    // Listen for auth:required events from the API service
+    const handleAuthRequired = () => {
+      setAuthenticated(false);
+      setUser(null);
+    };
+
+    window.addEventListener("auth:required", handleAuthRequired);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("auth:required", handleAuthRequired);
+    };
   }, []);
 
   // Login function
   const login = async (email, password) => {
+    setLoading(true);
     try {
       const result = await authLogin(email, password);
 
       if (result.success) {
         setUser(result.user);
         setAuthenticated(true);
+        return { success: true };
+      } else {
+        return { success: false, error: result.message };
       }
-
-      return result;
     } catch (error) {
-      console.error("Login error in context:", error);
-      throw error;
+      console.error("Login error:", error);
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
     }
   };
 
   // Logout function
   const logout = async () => {
+    setLoading(true);
     try {
       await authLogout();
       setUser(null);
       setAuthenticated(false);
       return { success: true };
     } catch (error) {
-      console.error("Logout error in context:", error);
-      throw error;
+      console.error("Logout error:", error);
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Update user function
+  // Update user function - useful after profile changes
   const updateUser = (updatedUser) => {
     setUser(updatedUser);
   };
 
-  // Utility function to check if the user is authenticated
-  const isAuthenticated = () => {
-    return authenticated;
+  // Create auth context value
+  const value = {
+    authenticated,
+    user,
+    loading,
+    login,
+    logout,
+    updateUser,
   };
 
-  // Provide auth context
-  return (
-    <AuthContext.Provider
-      value={{
-        authenticated,
-        user,
-        loading,
-        login,
-        logout,
-        updateUser,
-        isAuthenticated,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Custom hook to use the auth context
@@ -128,5 +151,3 @@ export const useAuth = () => {
 
   return context;
 };
-
-export default AuthContext;

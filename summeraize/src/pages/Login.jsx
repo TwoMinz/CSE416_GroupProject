@@ -7,7 +7,7 @@ import GoogleLoginButton from "../components/GoogleLoginButton";
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth(); // isAuthenticated 함수 가져오기
+  const { login, authenticated, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -53,15 +53,14 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     console.log("Auth state in Login:", {
-      isAuthenticated: isAuthenticated(),
       user: useAuth.user,
     });
 
-    if (isAuthenticated) {
+    if (authenticated === true && user) {
       console.log("User is authenticated, redirecting to home");
       navigate("/");
     }
-  }, [isAuthenticated, navigate]);
+  }, [authenticated, navigate]);
 
   const handleClickWebLogo = () => {
     navigate("/");

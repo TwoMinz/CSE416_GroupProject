@@ -119,7 +119,7 @@ module.exports.handler = async (event) => {
       // Create new user
       const userId = uuidv4();
       const newUser = {
-        userId,
+        id: userId,
         email: userInfo.email,
         username: userInfo.name || userInfo.email.split("@")[0],
         profilePicture:
@@ -148,7 +148,7 @@ module.exports.handler = async (event) => {
 
     const accessToken = jwt.sign(
       {
-        userId: user.userId,
+        userId: user.id,
         email: user.email,
       },
       process.env.JWT_SECRET,
@@ -157,7 +157,7 @@ module.exports.handler = async (event) => {
 
     const refreshToken = jwt.sign(
       {
-        userId: user.userId,
+        userId: user.id,
         tokenId: uuidv4(),
       },
       process.env.JWT_SECRET,
@@ -166,7 +166,7 @@ module.exports.handler = async (event) => {
 
     // Create user response object (without sensitive data)
     const userResponse = {
-      userId: user.userId,
+      userId: user.id,
       email: user.email,
       username: user.username,
       profilePicture: user.profilePicture,
