@@ -1,94 +1,132 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import {
-  isAuthenticated,
-  getCurrentUser,
+  login as authLogin,
   logout as authLogout,
+  getCurrentUser,
+  getToken,
+  refreshToken,
+  changeUsername as updateUsername,
+  changePassword as updatePassword,
+  changeProfileImage as updateProfileImage,
+  changeLanguage as updateLanguage,
 } from "../services/auth";
 
-const AuthContext = createContext();
+// Create the auth context
+const AuthContext = createContext(null);
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
-
-export function AuthProvider({ children }) {
+// Auth provider component
+export const AuthProvider = ({ children }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize auth state on mount
   useEffect(() => {
-    // Check authentication status on initial load
-    checkAuthStatus();
+    const initAuth = async () => {
+      try {
+        // Check if token exists
+        const token = getToken();
+        if (token) {
+          // Get current user
+          const currentUser = getCurrentUser();
+
+          if (currentUser) {
+            setUser(currentUser);
+            setAuthenticated(true);
+          } else {
+            // Try to refresh token if user info missing
+            try {
+              const result = await refreshToken();
+              if (result.success) {
+                setUser(result.user);
+                setAuthenticated(true);
+              }
+            } catch (refreshError) {
+              // Reset auth state on refresh error
+              setUser(null);
+              setAuthenticated(false);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        setUser(null);
+        setAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
   }, []);
 
-  // Function to check authentication status
-  const checkAuthStatus = () => {
-    setLoading(true);
-    const isAuth = isAuthenticated();
-    setAuthenticated(isAuth);
-
-    if (isAuth) {
-      const currentUser = getCurrentUser();
-      setUser(currentUser);
-    } else {
-      setUser(null);
-    }
-    setLoading(false);
-  };
-
-  // Function to handle login
+  // Login function
   const login = async (email, password) => {
     try {
-      const response = await import("../services/auth").then((module) =>
-        module.login(email, password)
-      );
+      const result = await authLogin(email, password);
 
-      if (response.success) {
+      if (result.success) {
+        setUser(result.user);
         setAuthenticated(true);
-        setUser(response.user);
-        return { success: true };
-      } else {
-        return { success: false, error: response.message };
       }
-    } catch (error) {
-      console.error("Login error in AuthContext:", error);
-      return { success: false, error: error.message };
-    }
-  };
 
-  // Function to handle logout
-  const logout = async () => {
-    try {
-      await authLogout();
-      setAuthenticated(false);
-      setUser(null);
+      return result;
     } catch (error) {
-      console.error("Logout error in AuthContext:", error);
+      console.error("Login error in context:", error);
       throw error;
     }
   };
 
-  // Function to update user information
-  const updateUser = (updatedUser) => {
-    if (updatedUser) {
-      setUser(updatedUser);
-      // If user is updated, ensure authenticated state is true
-      if (!authenticated) {
-        setAuthenticated(true);
-      }
-      console.log("User updated in context:", updatedUser);
+  // Logout function
+  const logout = async () => {
+    try {
+      await authLogout();
+      setUser(null);
+      setAuthenticated(false);
+      return { success: true };
+    } catch (error) {
+      console.error("Logout error in context:", error);
+      throw error;
     }
   };
 
-  const value = {
-    authenticated,
-    user,
-    loading,
-    login,
-    logout,
-    updateUser,
-    refreshAuthStatus: checkAuthStatus,
+  // Update user function
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser);
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  // Utility function to check if the user is authenticated
+  const isAuthenticated = () => {
+    return authenticated;
+  };
+
+  // Provide auth context
+  return (
+    <AuthContext.Provider
+      value={{
+        authenticated,
+        user,
+        loading,
+        login,
+        logout,
+        updateUser,
+        isAuthenticated,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Custom hook to use the auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+
+  return context;
+};
+
+export default AuthContext;

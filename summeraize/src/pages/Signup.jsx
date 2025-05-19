@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import researchImage from "../assets/images/student-research.jpg";
 import { signup } from "../services/auth";
+import GoogleLoginButton from "../components/GoogleLoginButton";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -89,6 +90,18 @@ const Signup = () => {
             {error}
           </div>
         )}
+
+        {/* Google Login Button */}
+        <div className="mt-2 mb-4">
+          <GoogleLoginButton />
+        </div>
+
+        {/* Divider */}
+        <div className="relative flex py-3 items-center">
+          <div className="flex-grow border-t border-gray-300"></div>
+          <span className="flex-shrink mx-4 text-gray-600">or</span>
+          <div className="flex-grow border-t border-gray-300"></div>
+        </div>
 
         <form onSubmit={handleSubmit} className="mt-2">
           <div className="mb-4">

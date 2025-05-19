@@ -1,10 +1,5 @@
 // Authentication service for SummarAIze application
-import {
-  apiRequest,
-  confirmProfileImageUpload,
-  uploadToS3,
-  requestProfileImageUpload,
-} from "./api";
+import { apiRequest } from "./api";
 import config from "../config";
 // Local storage keys
 const TOKEN_KEY = "summaraize-token";
@@ -364,6 +359,37 @@ const changeLanguage = async (userId, languageCode) => {
   }
 };
 
+const processOAuthRedirect = () => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  const refreshToken = params.get("refreshToken");
+
+  if (token && refreshToken) {
+    // Store tokens in local storage
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+
+    // Fetch and store user info
+    const userJson = params.get("user");
+    if (userJson) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userJson));
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+      } catch (e) {
+        console.error("Error parsing user data from URL", e);
+      }
+    }
+
+    // Remove tokens from URL (replace history)
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+
+    return true;
+  }
+
+  return false;
+};
+
 export {
   signup,
   login,
@@ -377,4 +403,5 @@ export {
   changeProfileImage,
   uploadProfileImage,
   changeLanguage,
+  processOAuthRedirect,
 };

@@ -1,22 +1,74 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import researchImage from "../assets/images/student-research.jpg";
 import { useAuth } from "../context/AuthContext";
+import GoogleLoginButton from "../components/GoogleLoginButton";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { login, isAuthenticated } = useAuth(); // isAuthenticated 함수 가져오기
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check for OAuth redirect with token/code in URL
+  useEffect(() => {
+    // Process URL parameters for OAuth redirects
+    const queryParams = new URLSearchParams(location.search);
+    const token = queryParams.get("token");
+    const refreshToken = queryParams.get("refreshToken");
+    const oauthError = queryParams.get("error");
+
+    // Handle successful OAuth redirect with tokens
+    if (token && refreshToken) {
+      console.log("OAuth login successful, tokens received");
+      // Store tokens in localStorage
+      localStorage.setItem("summaraize-token", token);
+      localStorage.setItem("summaraize-refresh-token", refreshToken);
+
+      // Remove tokens from URL (replace history)
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+
+      // Redirect to home
+      navigate("/");
+    }
+
+    // Handle OAuth error
+    if (oauthError) {
+      setError(`Login error: ${oauthError}`);
+      // Remove error from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Check for messages from state (e.g., after signup)
+    if (location.state?.message) {
+      setMessage(location.state.message);
+    }
+  }, [location, navigate]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    console.log("Auth state in Login:", {
+      isAuthenticated: isAuthenticated(),
+      user: useAuth.user,
+    });
+
+    if (isAuthenticated) {
+      console.log("User is authenticated, redirecting to home");
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleClickWebLogo = () => {
     navigate("/");
   };
 
   const handleClickSignUp = () => {
-    navigate("/SignUp");
+    navigate("/signup");
   };
 
   const handleSubmit = async (e) => {
@@ -67,12 +119,31 @@ const Login = () => {
           </p>
         </div>
 
+        {/* Success message */}
+        {message && (
+          <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+            {message}
+          </div>
+        )}
+
         {/* Error message */}
         {error && (
           <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
           </div>
         )}
+
+        {/* Google Login Button */}
+        <div className="mt-2 mb-4">
+          <GoogleLoginButton />
+        </div>
+
+        {/* Divider */}
+        <div className="relative flex py-3 items-center">
+          <div className="flex-grow border-t border-gray-300"></div>
+          <span className="flex-shrink mx-4 text-gray-600">or</span>
+          <div className="flex-grow border-t border-gray-300"></div>
+        </div>
 
         <form onSubmit={handleSubmit} className="mt-2">
           <div className="mb-4">
