@@ -294,64 +294,46 @@ const uploadProfileImage = async (file) => {
       throw new Error("Image size should not exceed 2MB");
     }
 
-    // Step 1: Request upload URL
-    console.log("Requesting upload URL for profile image");
-    const uploadRequestResponse = await apiRequest(
+    // Convert file to Base64
+    const base64Data = await fileToBase64(file);
+    // Send directly to server
+    const response = await apiRequest(
       "/api/profile/upload",
       "POST",
       {
         userId: user.userId,
         fileName: file.name,
         fileType: file.type,
-        fileSize: file.size,
+        imageData: base64Data,
       },
       token
     );
 
-    if (!uploadRequestResponse.success) {
-      throw new Error(
-        uploadRequestResponse.message || "Failed to get upload URL"
-      );
-    }
-
-    // Step 2: Upload to S3
-    console.log("Uploading profile image to S3");
-    await uploadToS3(
-      file,
-      uploadRequestResponse.directUploadConfig.url,
-      uploadRequestResponse.directUploadConfig.fields
-    );
-
-    // Step 3: Confirm upload
-    console.log("Confirming profile image upload");
-    const confirmResponse = await apiRequest(
-      "/api/profile/confirm",
-      "POST",
-      {
-        userId: user.userId,
-        fileKey: uploadRequestResponse.fileKey,
-        uploadSuccess: true,
-      },
-      token
-    );
-
-    if (!confirmResponse.success) {
-      throw new Error(
-        confirmResponse.message || "Failed to confirm profile image upload"
-      );
+    if (!response.success) {
+      throw new Error(response.message || "Failed to upload profile image");
     }
 
     // Update user in local storage
-    if (confirmResponse.user) {
-      localStorage.setItem(USER_KEY, JSON.stringify(confirmResponse.user));
+    if (response.user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(response.user));
     }
 
     console.log("Profile image uploaded successfully");
-    return confirmResponse;
+    return response;
   } catch (error) {
     console.error("Profile image upload error:", error);
     throw error;
   }
+};
+
+// 파일을 Base64로 변환하는 헬퍼 함수
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
 };
 
 const changeLanguage = async (userId, languageCode) => {

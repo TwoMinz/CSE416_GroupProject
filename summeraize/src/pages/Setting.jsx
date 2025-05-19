@@ -233,9 +233,9 @@ const Setting = () => {
 
     try {
       setIsUploadingImage(true);
-      setUploadProgress(10);
+      setUploadProgress(20);
 
-      // 새로운 통합 함수 사용
+      // 서버 측에서 처리하는 새로운 함수 사용
       const result = await uploadProfileImage(selectedFile);
       setUploadProgress(100);
 
@@ -458,7 +458,7 @@ const Setting = () => {
               {/* Language Field */}
               <div className="flex items-center justify-between">
                 <label className="font-semibold text-gray-700 text-lg w-1/3">
-                  Language:
+                  Summarization Language:
                 </label>
                 <div className="w-2/5">
                   <div className="relative">
@@ -509,14 +509,6 @@ const Setting = () => {
                       )}
                     </div>
                   </div>
-                  {isChangingLanguage && (
-                    <p className="text-xs text-blue-600 mt-1 font-medium">
-                      Updating language preference...
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Language for paper summaries
-                  </p>
                 </div>
               </div>
 
