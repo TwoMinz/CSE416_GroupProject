@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import testAvatar from '../assets/images/test-avatar.png';
-import archiveIcon from '../assets/images/archive.png';
-import settingIcon from '../assets/images/setting.png';
-import logoutIcon from '../assets/images/logout.png';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from "react";
+import defaultAvatar from "../assets/images/default-avatar.png"; // Replace with your default icon path
+import archiveIcon from "../assets/images/archive.png";
+import settingIcon from "../assets/images/setting.png";
+import logoutIcon from "../assets/images/logout.png";
+import { useNavigate } from "react-router-dom";
 
 const UserToggle = ({ onArchiveClick, onSettingClick, onLogoutClick }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,19 +11,19 @@ const UserToggle = ({ onArchiveClick, onSettingClick, onLogoutClick }) => {
 
   const navigate = useNavigate();
   const handleClickArchieve = () => {
-    navigate('/Library');
-  }
+    navigate("/Library");
+  };
 
   const handleClickSetting = () => {
-    navigate('/setting');
-  }
+    navigate("/setting");
+  };
 
-  // 드롭다운 표시 여부 토글
+  // Toggle dropdown
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
   };
 
-  // 외부 클릭시 드롭다운 닫기
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -31,13 +31,13 @@ const UserToggle = ({ onArchiveClick, onSettingClick, onLogoutClick }) => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  // 옵션 클릭 처리
+  // Handle option clicks
   const handleOptionClick = (callback) => {
     if (callback) {
       callback();
@@ -47,20 +47,20 @@ const UserToggle = ({ onArchiveClick, onSettingClick, onLogoutClick }) => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* 사용자 아바타 버튼 */}
-      <button 
+      {/* User avatar button - using default icon instead of user profile picture */}
+      <button
         onClick={toggleDropdown}
-        style={{ width: '3.5rem', height: '3.5rem'}}
+        style={{ width: "3.5rem", height: "3.5rem" }}
         className="rounded-full overflow-hidden border-2 border-white focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-300"
       >
-        <img 
-          src={testAvatar} 
-          alt="User" 
+        <img
+          src={defaultAvatar}
+          alt="User"
           className="w-full h-full object-cover"
         />
       </button>
 
-      {/* 드롭다운 메뉴 */}
+      {/* Dropdown menu */}
       {isOpen && (
         <div className="absolute right-0 mt-0 w-48 bg-white rounded-lg shadow-xl py-1 z-10 border border-gray-200">
           <ul>

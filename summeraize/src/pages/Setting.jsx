@@ -8,6 +8,7 @@ import {
   uploadProfileImage,
   changeLanguage,
 } from "../services/auth";
+import defaultAvatar from "../assets/images/default-avatar.png"; // Add default avatar import
 
 // Language options for display
 const LANGUAGE_MAP = {
@@ -207,8 +208,9 @@ const Setting = () => {
     }
   };
 
-  // Handle profile picture button click
+  // Profile picture functions kept but not connected to UI
   const handlePictureButtonClick = () => {
+    // Disabled - the function exists but is not called from UI
     fileInputRef.current.click();
   };
 
@@ -217,14 +219,14 @@ const Setting = () => {
 
     if (!selectedFile) return;
 
-    // 파일 유형 검증
+    // File type validation
     const validTypes = ["image/jpeg", "image/png", "image/jpg"];
     if (!validTypes.includes(selectedFile.type)) {
       openPopup("Error", "Please select a PNG or JPG image.");
       return;
     }
 
-    // 파일 크기 검증 (최대 2MB)
+    // File size validation (max 2MB)
     const maxSize = 2 * 1024 * 1024; // 2MB
     if (selectedFile.size > maxSize) {
       openPopup("Error", "Image size should not exceed 2MB.");
@@ -235,14 +237,14 @@ const Setting = () => {
       setIsUploadingImage(true);
       setUploadProgress(20);
 
-      // 서버 측에서 처리하는 새로운 함수 사용
+      // Server-side function for handling uploads
       const result = await uploadProfileImage(selectedFile);
       setUploadProgress(100);
 
       if (result.success) {
         openPopup("Success", "Profile picture has been updated!");
 
-        // 사용자 컨텍스트 업데이트
+        // Update user context
         if (updateUser) {
           updateUser(result.user);
         }
@@ -255,7 +257,7 @@ const Setting = () => {
     } finally {
       setIsUploadingImage(false);
       setUploadProgress(0);
-      // 파일 인풋 초기화
+      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -275,7 +277,7 @@ const Setting = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-100 to-blue-500">
-      {/* Hidden file input */}
+      {/* Hidden file input - kept but not used */}
       <input
         type="file"
         ref={fileInputRef}
@@ -288,21 +290,17 @@ const Setting = () => {
       <div className="flex-1 flex justify-center items-center p-4">
         <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
           <div className="p-8 flex flex-col items-center">
-            {/* Profile Photo */}
+            {/* Profile Photo - now always showing default icon */}
             <div className="relative mb-6">
               <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                {user && user.profilePicture ? (
-                  <img
-                    src={user.profilePicture}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    style={{ objectPosition: "center" }}
-                  />
-                ) : (
-                  <span className="text-gray-500 font-medium">Edit Photo</span>
-                )}
+                <img
+                  src={defaultAvatar}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: "center" }}
+                />
 
-                {/* Upload progress overlay */}
+                {/* Upload progress overlay - kept for completeness */}
                 {isUploadingImage && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
                     <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -310,26 +308,7 @@ const Setting = () => {
                   </div>
                 )}
               </div>
-              <button
-                className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 shadow-md hover:bg-blue-600 transition-colors"
-                onClick={handlePictureButtonClick}
-                disabled={isUploadingImage}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                  />
-                </svg>
-              </button>
+              {/* Edit button removed */}
             </div>
 
             {/* User Info */}
