@@ -20,6 +20,7 @@ const Login = () => {
     const queryParams = new URLSearchParams(location.search);
     const token = queryParams.get("token");
     const refreshToken = queryParams.get("refreshToken");
+    const userJson = params.get("user");
     const oauthError = queryParams.get("error");
 
     // Handle successful OAuth redirect with tokens
@@ -29,7 +30,16 @@ const Login = () => {
       localStorage.setItem("summaraize-token", token);
       localStorage.setItem("summaraize-refresh-token", refreshToken);
 
-      // Remove tokens from URL (replace history)
+      if (userJson) {
+        try {
+          const user = JSON.parse(decodeURIComponent(userJson));
+          localStorage.setItem(USER_KEY, JSON.stringify(user));
+        } catch (e) {
+          console.error("OAuth 사용자 데이터 파싱 오류", e);
+        }
+      }
+
+      // URL 파라미터 제거 (깨끗한 URL로 상태 유지)
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
 

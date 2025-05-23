@@ -3,8 +3,6 @@ import config from "../config";
 
 const GoogleLoginButton = () => {
   const handleGoogleLogin = () => {
-    alert("Google Login is not supported yet. ");
-    /*
     // The Google OAuth URL
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth`;
 
@@ -25,7 +23,6 @@ const GoogleLoginButton = () => {
 
     // Redirect the user to Google's OAuth page
     window.location.href = `${googleAuthUrl}?${queryString}`;
-    */
   };
 
   return (
