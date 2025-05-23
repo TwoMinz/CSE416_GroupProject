@@ -108,7 +108,7 @@ module.exports.handler = async (event) => {
       await documentClient
         .update({
           TableName: process.env.USERS_TABLE,
-          Key: { userId: user.userId },
+          Key: { id: user.id },
           UpdateExpression: "SET lastLogin = :lastLogin",
           ExpressionAttributeValues: {
             ":lastLogin": new Date().toISOString(),
@@ -119,7 +119,7 @@ module.exports.handler = async (event) => {
       // Create new user
       const userId = uuidv4();
       const newUser = {
-        id: userId,
+        id: String(userId),
         email: userInfo.email,
         username: userInfo.name || userInfo.email.split("@")[0],
         profilePicture:
