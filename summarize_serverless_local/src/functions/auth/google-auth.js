@@ -116,10 +116,10 @@ module.exports.handler = async (event) => {
         })
         .promise();
     } else {
-      // Create new user
-      const userId = uuidv4();
+      // Create new user - userId should be a number
+      const userId = Date.now() + Math.floor(Math.random() * 1000);
       const newUser = {
-        id: String(userId),
+        id: userId, // Use numeric ID consistent with other parts
         email: userInfo.email,
         username: userInfo.name || userInfo.email.split("@")[0],
         profilePicture:
@@ -148,7 +148,7 @@ module.exports.handler = async (event) => {
 
     const accessToken = jwt.sign(
       {
-        userId: user.id,
+        userId: String(user.id), // Convert to string for consistency
         email: user.email,
       },
       process.env.JWT_SECRET,
@@ -157,7 +157,7 @@ module.exports.handler = async (event) => {
 
     const refreshToken = jwt.sign(
       {
-        userId: user.id,
+        userId: String(user.id),
         tokenId: uuidv4(),
       },
       process.env.JWT_SECRET,
@@ -166,15 +166,25 @@ module.exports.handler = async (event) => {
 
     // Create user response object (without sensitive data)
     const userResponse = {
-      userId: user.id,
+      userId: String(user.id), // Ensure consistent string format
       email: user.email,
       username: user.username,
       profilePicture: user.profilePicture,
       transLang: user.transLang,
     };
 
-    // For production, redirect to frontend with tokens
-    const redirectUrl = `${process.env.FRONTEND_URL}?token=${accessToken}&refreshToken=${refreshToken}`;
+    console.log("[GOOGLE-AUTH] User response prepared:", userResponse);
+
+    // Encode user data for URL transmission
+    const encodedUser = encodeURIComponent(JSON.stringify(userResponse));
+
+    // Redirect to the dedicated OAuth callback route
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${accessToken}&refreshToken=${refreshToken}&user=${encodedUser}`;
+
+    console.log(
+      "[GOOGLE-AUTH] Redirecting to OAuth callback:",
+      redirectUrl.substring(0, 100) + "..."
+    );
 
     return {
       statusCode: 302,

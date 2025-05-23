@@ -12,6 +12,7 @@ import Library from "./pages/Library";
 import BookStand from "./pages/BookStand";
 import Signup from "./pages/SignUp";
 import Setting from "./pages/Setting";
+import OAuthCallback from "./components/OAuthCallback";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Protected route component
@@ -41,6 +42,7 @@ function AppRoutes() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/auth/callback" element={<OAuthCallback />} />
           <Route
             path="/library"
             element={

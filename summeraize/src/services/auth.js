@@ -363,28 +363,43 @@ const processOAuthRedirect = () => {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   const refreshToken = params.get("refreshToken");
+  const userParam = params.get("user");
+
+  console.log("Processing OAuth redirect:", {
+    hasToken: !!token,
+    hasRefreshToken: !!refreshToken,
+    hasUser: !!userParam,
+  });
 
   if (token && refreshToken) {
-    // Store tokens in local storage
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    try {
+      // Store tokens in local storage
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      console.log("OAuth tokens stored successfully");
 
-    // Fetch and store user info
-    const userJson = params.get("user");
-    if (userJson) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userJson));
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
-      } catch (e) {
-        console.error("Error parsing user data from URL", e);
+      // Parse and store user info if available
+      if (userParam) {
+        try {
+          const user = JSON.parse(decodeURIComponent(userParam));
+          localStorage.setItem(USER_KEY, JSON.stringify(user));
+          console.log("OAuth user data stored:", user);
+        } catch (e) {
+          console.error("Error parsing user data from URL:", e);
+          // 사용자 데이터 파싱에 실패해도 토큰만으로 로그인 처리
+          console.log("Proceeding with token-only authentication");
+        }
       }
+
+      // Remove tokens from URL (replace history)
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+
+      return true;
+    } catch (error) {
+      console.error("Error processing OAuth redirect:", error);
+      return false;
     }
-
-    // Remove tokens from URL (replace history)
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-
-    return true;
   }
 
   return false;

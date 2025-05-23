@@ -14,63 +14,23 @@ const Login = () => {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check for OAuth redirect with token/code in URL
+  // Check for messages from state (e.g., after signup or OAuth error)
   useEffect(() => {
-    // Process URL parameters for OAuth redirects
-    const queryParams = new URLSearchParams(location.search);
-    const token = queryParams.get("token");
-    const refreshToken = queryParams.get("refreshToken");
-    const userJson = params.get("user");
-    const oauthError = queryParams.get("error");
-
-    // Handle successful OAuth redirect with tokens
-    if (token && refreshToken) {
-      console.log("OAuth login successful, tokens received");
-      // Store tokens in localStorage
-      localStorage.setItem("summaraize-token", token);
-      localStorage.setItem("summaraize-refresh-token", refreshToken);
-
-      if (userJson) {
-        try {
-          const user = JSON.parse(decodeURIComponent(userJson));
-          localStorage.setItem(USER_KEY, JSON.stringify(user));
-        } catch (e) {
-          console.error("OAuth 사용자 데이터 파싱 오류", e);
-        }
-      }
-
-      // URL 파라미터 제거 (깨끗한 URL로 상태 유지)
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-
-      // Redirect to home
-      navigate("/");
-    }
-
-    // Handle OAuth error
-    if (oauthError) {
-      setError(`Login error: ${oauthError}`);
-      // Remove error from URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
-    // Check for messages from state (e.g., after signup)
     if (location.state?.message) {
       setMessage(location.state.message);
     }
-  }, [location, navigate]);
+    if (location.state?.error) {
+      setError(location.state.error);
+    }
+  }, [location.state]);
 
   // Redirect if already authenticated
   useEffect(() => {
-    console.log("Auth state in Login:", {
-      user: useAuth.user,
-    });
-
     if (authenticated === true && user) {
       console.log("User is authenticated, redirecting to home");
-      navigate("/");
+      navigate("/", { replace: true });
     }
-  }, [authenticated, navigate]);
+  }, [authenticated, user, navigate]);
 
   const handleClickWebLogo = () => {
     navigate("/");
@@ -83,6 +43,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setMessage("");
 
     if (!email || !password) {
       setError("Email and password are required");
@@ -96,9 +57,8 @@ const Login = () => {
       const result = await login(email, password);
 
       if (result.success) {
-        // Redirect to home page after successful login
         console.log("Login successful:", result);
-        navigate("/");
+        navigate("/", { replace: true });
       } else {
         setError(result.error || "Login failed. Please try again.");
       }
