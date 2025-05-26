@@ -37,22 +37,28 @@ const Setting = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState("");
 
   // Popup for notifications
   const { isOpen, popupContent, openPopup, closePopup } = usePopup();
 
   // Initialize state with user information
   useEffect(() => {
-    if (authenticated && user) {
-      console.log("User:", user);
-      setNickname(user.username || "Nickname");
-      setLanguage(user.transLang || 1);
-      setEmail(user.email || "");
-    } else {
-      // Redirect if not authenticated
-      navigate("/login");
+  if (authenticated && user) {
+    console.log("User:", user);
+    setNickname(user.username || "Nickname");
+    setLanguage(user.transLang || 1);
+    setEmail(user.email || "");
+    
+    // 프로필 이미지 URL 설정
+    if (user.profilePicture) {
+      setProfileImageUrl(user.profilePicture);
     }
-  }, [authenticated, user, navigate]);
+  } else {
+    // Redirect if not authenticated
+    navigate("/login");
+  }
+}, [authenticated, user, navigate]);
 
   const handleBackClick = () => {
     navigate("/");
@@ -64,6 +70,28 @@ const Setting = () => {
 
   const handleNicknameChange = (e) => {
     setNickname(e.target.value);
+  };
+
+  const uploadToCloudinary = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'ml_default'); // 여기에 실제 upload preset 입력
+  
+  try {
+    const response = await fetch(
+      'https://api.cloudinary.com/v1_1/daqrxgtih/image/upload', // 여기에 실제 cloud name 입력
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    throw error;
+  }
   };
 
   // Save nickname when finished editing
@@ -237,23 +265,36 @@ const Setting = () => {
       setIsUploadingImage(true);
       setUploadProgress(20);
 
-      // Server-side function for handling uploads
-      const result = await uploadProfileImage(selectedFile);
-      setUploadProgress(100);
+      console.log("Starting Cloudinary upload...");
+      
+      // Cloudinary에 업로드
+      const cloudinaryResult = await uploadToCloudinary(selectedFile);
+      setUploadProgress(80);
 
-      if (result.success) {
-        openPopup("Success", "Profile picture has been updated!");
-
-        // Update user context
-        if (updateUser) {
-          updateUser(result.user);
-        }
+      if (cloudinaryResult && cloudinaryResult.secure_url) {
+        console.log("Cloudinary upload successful!");
+        console.log("Image URL:", cloudinaryResult.secure_url);
+        console.log("Full Cloudinary response:", cloudinaryResult);
+        
+        setUploadProgress(100);
+        
+        // ✨ 새로 추가: 업로드된 이미지를 바로 프로필에 표시
+        setProfileImageUrl(cloudinaryResult.secure_url);
+        
+        // 여기서 나중에 백엔드 API 호출을 추가할 예정
+        // const result = await updateUserProfileImage(user.userId, cloudinaryResult.secure_url);
+        
+        openPopup("Success", "Profile picture has been uploaded! (Not saved to server yet)");
+        
+        // 임시로 콘솔에만 로그 출력
+        console.log("이미지 링크가 준비되었습니다:", cloudinaryResult.secure_url);
+        
       } else {
-        throw new Error(result.message || "Failed to update profile picture");
+        throw new Error("Failed to get image URL from Cloudinary");
       }
     } catch (error) {
-      console.error("Error uploading profile picture:", error);
-      openPopup("Error", `Failed to upload profile picture: ${error.message}`);
+      console.error("Error uploading to Cloudinary:", error);
+      openPopup("Error", `Failed to upload image: ${error.message}`);
     } finally {
       setIsUploadingImage(false);
       setUploadProgress(0);
@@ -294,21 +335,47 @@ const Setting = () => {
             <div className="relative mb-6">
               <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                 <img
-                  src={defaultAvatar}
+                  src={profileImageUrl || defaultAvatar}
                   alt="Profile"
                   className="w-full h-full object-cover"
                   style={{ objectPosition: "center" }}
+                  onError={() => {
+                    // 이미지 로드 실패 시 기본 이미지로 대체
+                    console.log("Failed to load profile image, using default");
+                    setProfileImageUrl("");
+                  }}
                 />
 
-                {/* Upload progress overlay - kept for completeness */}
+                {/* Upload progress overlay */}
                 {isUploadingImage && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center rounded-full">
                     <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <div className="text-white mt-2">{uploadProgress}%</div>
+                    <div className="text-white mt-2 text-sm">{uploadProgress}%</div>
                   </div>
                 )}
               </div>
-              {/* Edit button removed */}
+              
+              {/* Edit button */}
+              <button
+                onClick={handlePictureButtonClick}
+                disabled={isUploadingImage}
+                className="absolute bottom-2 right-2 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Change profile picture"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+              </button>
             </div>
 
             {/* User Info */}
