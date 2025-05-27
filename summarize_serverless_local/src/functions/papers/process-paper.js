@@ -125,6 +125,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
       publicationYear: "Publication Year",
       abstract: "Abstract",
       introduction: "Introduction",
+      relatedWorks: "Related Works",
       methodology: "Methodology",
       results: "Results",
       discussion: "Discussion",
@@ -140,6 +141,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
       publicationYear: "출판 연도",
       abstract: "초록",
       introduction: "서론",
+      relatedWorks: "관련 연구",
       methodology: "방법론",
       results: "결과",
       discussion: "논의",
@@ -155,6 +157,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
       publicationYear: "Año de publicación",
       abstract: "Resumen",
       introduction: "Introducción",
+      relatedWorks: "Trabajos Relacionados",
       methodology: "Metodología",
       results: "Resultados",
       discussion: "Discusión",
@@ -170,6 +173,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
       publicationYear: "Année de publication",
       abstract: "Résumé",
       introduction: "Introduction",
+      relatedWorks: "Travaux Connexes",
       methodology: "Méthodologie",
       results: "Résultats",
       discussion: "Discussion",
@@ -205,6 +209,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
 
   addSection(titles.abstract, paperAnalysis.abstract);
   addSection(titles.introduction, paperAnalysis.introduction);
+  addSection(titles.relatedWorks, paperAnalysis.relatedWorks); // Added Related Works section
   addSection(titles.methodology, paperAnalysis.methodology);
   addSection(titles.results, paperAnalysis.results);
   addSection(titles.discussion, paperAnalysis.discussion);
@@ -258,21 +263,26 @@ Provide your response in ${targetLanguage} language.
     {"point": "Key point from introduction", "page": 2},
     {"point": "Another key point from introduction", "page": 3}
   ],
+  "relatedWorks": [
+    {"point": "Key related work or research mentioned", "page": 4},
+    {"point": "Another related research finding", "page": 5},
+    {"point": "Comparison with existing approaches", "page": 6}
+  ],
   "methodology": [
-    {"point": "Key methodological approach", "page": 4},
-    {"point": "Another methodological point", "page": 5}
+    {"point": "Key methodological approach", "page": 7},
+    {"point": "Another methodological point", "page": 8}
   ],
   "results": [
-    {"point": "Important result", "page": 6},
-    {"point": "Another important result", "page": 7}
+    {"point": "Important result", "page": 9},
+    {"point": "Another important result", "page": 10}
   ],
   "discussion": [
-    {"point": "Discussion point", "page": 8},
-    {"point": "Another discussion point", "page": 9}
+    {"point": "Discussion point", "page": 11},
+    {"point": "Another discussion point", "page": 12}
   ],
   "conclusions": [
-    {"point": "Conclusion", "page": 10},
-    {"point": "Another conclusion", "page": 10}
+    {"point": "Conclusion", "page": 13},
+    {"point": "Another conclusion", "page": 13}
   ],
   "keyTerms": [
     {"term": "Technical term", "definition": "Definition of the term"},
@@ -287,7 +297,16 @@ Provide your response in ${targetLanguage} language.
 Paper text:
 ${text}
 
-For each section (abstract, introduction, methodology, etc.), provide key points with their corresponding page numbers in ${targetLanguage} language. If a section is not present in the paper, return an empty array for that section.
+For each section (abstract, introduction, relatedWorks, methodology, etc.), provide key points with their corresponding page numbers in ${targetLanguage} language. 
+
+For the "relatedWorks" section, focus on:
+- Previous research studies mentioned in the paper
+- Existing approaches or methods that are compared or referenced
+- Related work that the current research builds upon
+- Comparative analysis with other studies
+- Gap in literature that this research addresses
+
+If a section is not present in the paper, return an empty array for that section.
 
 Make sure all page number references are accurate and all key points are factual statements from the paper.
 Ensure all text is in ${targetLanguage} language.
@@ -298,7 +317,7 @@ Your response must be a valid JSON object that follows the format above precisel
           messages: [
             {
               role: "system",
-              content: `You are a research paper analysis expert who provides responses in ${targetLanguage} language. Extract detailed, structured information from academic papers with accurate page references. Always respond with valid JSON.`,
+              content: `You are a research paper analysis expert who provides responses in ${targetLanguage} language. Extract detailed, structured information from academic papers with accurate page references, paying special attention to related works and prior research mentioned in the paper. Always respond with valid JSON.`,
             },
             {
               role: "user",
@@ -306,7 +325,7 @@ Your response must be a valid JSON object that follows the format above precisel
             },
           ],
           temperature: 0.2,
-          max_tokens: 3000,
+          max_tokens: 4000, // Increased token limit to accommodate related works section
           response_format: { type: "json_object" },
         });
 
@@ -324,6 +343,7 @@ Your response must be a valid JSON object that follows the format above precisel
         const keyPoints = [
           ...(paperAnalysis.abstract || []),
           ...(paperAnalysis.introduction || []),
+          ...(paperAnalysis.relatedWorks || []), // Include related works in key points
           ...(paperAnalysis.methodology || []),
           ...(paperAnalysis.results || []),
           ...(paperAnalysis.discussion || []),
