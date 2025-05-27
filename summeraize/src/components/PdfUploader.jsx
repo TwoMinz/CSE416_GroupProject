@@ -1,54 +1,18 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import uploadIcon from "../assets/images/upload-icon.png";
 import { uploadPaperFile } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import {
-  initWebSocket,
-  addListener,
-  simulatePaperStatusUpdate,
-} from "../services/websocket";
-import config from "../config";
 
 const PdfUploader = ({ onFileUpload }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
-  const [uploadedPaperId, setUploadedPaperId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const { user, authenticated } = useAuth();
   const navigate = useNavigate();
   const dropZoneRef = useRef(null);
   const fileInputRef = useRef(null);
-
-  // Set up WebSocket listener for paper status updates
-  useEffect(() => {
-    if (authenticated && uploadedPaperId) {
-      // Initialize WebSocket connection
-      initWebSocket();
-
-      // Listen for status updates for this specific paper
-      const unsubscribe = addListener("PAPER_STATUS_UPDATE", (data) => {
-        if (data.paperId === uploadedPaperId) {
-          setUploadStatus({
-            status: data.status,
-            message: data.message || `Paper status: ${data.status}`,
-          });
-
-          // If processing is complete, navigate to the paper view
-          if (data.status === "completed") {
-            setTimeout(() => {
-              navigate("/bookstand", { state: { paperId: uploadedPaperId } });
-            }, 2000); // Give user time to see the completion message
-          }
-        }
-      });
-
-      return () => {
-        unsubscribe();
-      };
-    }
-  }, [authenticated, uploadedPaperId, navigate]);
 
   // Function to handle drag enter event
   const handleDragEnter = (e) => {
@@ -173,40 +137,15 @@ const PdfUploader = ({ onFileUpload }) => {
       );
 
       if (result.success) {
-        setUploadedPaperId(result.paperId);
+        setUploadStatus({
+          status: "completed",
+          message: "Upload successful! Redirecting to library...",
+        });
 
-        // For local development without actual websocket:
-        if (config.isDevelopment) {
-          simulatePaperStatusUpdate(
-            result.paperId,
-            "processing",
-            "Processing PDF..."
-          );
-
-          setTimeout(() => {
-            simulatePaperStatusUpdate(
-              result.paperId,
-              "analyzing",
-              "Analyzing paper content..."
-            );
-
-            setTimeout(() => {
-              simulatePaperStatusUpdate(
-                result.paperId,
-                "summarizing",
-                "Generating summary..."
-              );
-
-              setTimeout(() => {
-                simulatePaperStatusUpdate(
-                  result.paperId,
-                  "completed",
-                  "Summary ready!"
-                );
-              }, 5000);
-            }, 4000);
-          }, 3000);
-        }
+        // Navigate to library after successful upload
+        setTimeout(() => {
+          navigate("/library");
+        }, 1000);
       }
     } catch (error) {
       setUploadStatus({
@@ -235,7 +174,6 @@ const PdfUploader = ({ onFileUpload }) => {
     setIsUploading(false);
     setUploadStatus(null);
     setUploadProgress(0);
-    setUploadedPaperId(null);
   };
 
   return (
@@ -274,7 +212,7 @@ const PdfUploader = ({ onFileUpload }) => {
               <>
                 <h1 className="text-2xl font-bold text-blue-600 mb-2">
                   {uploadStatus?.status === "processing"
-                    ? "Processing..."
+                    ? "Upload Complete!"
                     : "Uploading..."}
                 </h1>
                 <p className="font-semibold text-gray-800 mb-3">
@@ -289,18 +227,19 @@ const PdfUploader = ({ onFileUpload }) => {
                   ></div>
                 </div>
 
-                {/* Cancel button (only during upload, not processing) */}
-                {uploadStatus?.status !== "processing" && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCancelUpload();
-                    }}
-                    className="text-blue-500 text-sm hover:text-blue-700 mt-2"
-                  >
-                    Cancel
-                  </button>
-                )}
+                {/* Cancel button (only during upload, not when completed) */}
+                {uploadStatus?.status !== "processing" &&
+                  uploadStatus?.status !== "completed" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCancelUpload();
+                      }}
+                      className="text-blue-500 text-sm hover:text-blue-700 mt-2"
+                    >
+                      Cancel
+                    </button>
+                  )}
               </>
             ) : (
               <>

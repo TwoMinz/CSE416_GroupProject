@@ -1,12 +1,10 @@
-// Enhanced AuthContext.jsx with Google OAuth support
+// AuthContext.jsx - WebSocket 의존성 제거 버전
 import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   login as authLogin,
   logout as authLogout,
-  getCurrentUser,
-  getToken,
   isAuthenticated,
-  refreshToken as authRefreshToken,
+  getCurrentUser,
   processOAuthRedirect,
 } from "../services/auth";
 
@@ -25,147 +23,145 @@ export const AuthProvider = ({ children }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 컴포넌트 마운트 시 인증 상태 확인
+  // Initialize auth state
   useEffect(() => {
-    checkAuthStatus();
-  }, []);
+    const initAuth = async () => {
+      try {
+        console.log("Initializing authentication...");
 
-  // 인증 상태 확인 함수
-  const checkAuthStatus = async () => {
-    try {
-      setLoading(true);
+        // Check for OAuth redirect first
+        const oauthProcessed = processOAuthRedirect();
+        if (oauthProcessed) {
+          console.log("OAuth redirect processed successfully");
+        }
 
-      // OAuth 리다이렉트 처리 먼저 확인
-      const oauthProcessed = processOAuthRedirect();
-      if (oauthProcessed) {
-        console.log("OAuth redirect processed");
-      }
-
-      const token = getToken();
-      const currentUser = getCurrentUser();
-
-      console.log("Auth check:", {
-        hasToken: !!token,
-        hasUser: !!currentUser,
-        isAuth: isAuthenticated(),
-      });
-
-      if (token && currentUser && isAuthenticated()) {
-        // 토큰이 만료에 가까우면 갱신 시도
-        try {
-          await authRefreshToken();
-          const refreshedUser = getCurrentUser();
-          setUser(refreshedUser || currentUser);
-          setAuthenticated(true);
-          console.log("Auth status: authenticated with refreshed token");
-        } catch (refreshError) {
-          console.log("Token refresh failed, using existing auth");
+        // Check authentication status
+        if (isAuthenticated()) {
+          const currentUser = getCurrentUser();
+          console.log("User is authenticated:", currentUser);
           setUser(currentUser);
           setAuthenticated(true);
+        } else {
+          console.log("User is not authenticated");
+          setUser(null);
+          setAuthenticated(false);
         }
-      } else {
-        console.log("Auth status: not authenticated");
+      } catch (error) {
+        console.error("Error initializing auth:", error);
         setUser(null);
         setAuthenticated(false);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error checking auth status:", error);
-      setUser(null);
-      setAuthenticated(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  // 로그인 함수
+    initAuth();
+  }, []);
+
+  // Login function
   const login = async (email, password) => {
     try {
+      console.log("Attempting login for:", email);
       setLoading(true);
+
       const result = await authLogin(email, password);
 
       if (result.success) {
+        console.log("Login successful, updating auth state");
         setUser(result.user);
         setAuthenticated(true);
-        console.log("Login successful in context");
         return { success: true };
       } else {
+        console.log("Login failed:", result.message);
         return { success: false, error: result.message };
       }
     } catch (error) {
-      console.error("Login error in context:", error);
+      console.error("Login error:", error);
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
   };
 
-  // 로그아웃 함수
+  // Logout function
   const logout = async () => {
     try {
+      console.log("Attempting logout");
+      setLoading(true);
+
       await authLogout();
+
+      console.log("Logout successful, clearing auth state");
       setUser(null);
       setAuthenticated(false);
-      console.log("Logout successful in context");
+
+      return { success: true };
     } catch (error) {
-      console.error("Logout error in context:", error);
-      // 로그아웃은 실패해도 로컬 상태는 클리어
+      console.error("Logout error:", error);
+      // Even if logout API fails, clear local state
       setUser(null);
       setAuthenticated(false);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 사용자 정보 업데이트 함수
-  const updateUser = (newUser) => {
-    setUser(newUser);
-    // localStorage도 업데이트
-    localStorage.setItem("summaraize-user", JSON.stringify(newUser));
-  };
+  // Update user information
+  const updateUser = (newUserData) => {
+    console.log("Updating user data:", newUserData);
+    setUser(newUserData);
 
-  // Google OAuth나 다른 외부 인증을 위한 직접 인증 데이터 설정 함수
-  const setAuthData = ({ user, authenticated, token }) => {
-    console.log("Setting auth data directly:", {
-      user: !!user,
-      authenticated,
-      token: !!token,
-    });
-
-    if (user) {
-      setUser(user);
-    }
-    if (typeof authenticated === "boolean") {
-      setAuthenticated(authenticated);
-    }
-    if (token) {
-      localStorage.setItem("summaraize-token", token);
-      if (user) {
-        localStorage.setItem("summaraize-user", JSON.stringify(user));
-      }
-    }
-  };
-
-  // 토큰 갱신 함수
-  const refreshToken = async () => {
+    // Update localStorage as well
     try {
-      const result = await authRefreshToken();
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthenticated(true);
-        return true;
-      }
-      return false;
+      localStorage.setItem("summaraize-user", JSON.stringify(newUserData));
     } catch (error) {
-      console.error("Token refresh failed:", error);
-      setUser(null);
-      setAuthenticated(false);
-      return false;
+      console.error("Error updating user in localStorage:", error);
     }
   };
 
-  // 강제 인증 상태 새로고침 함수
+  // Force refresh auth state (for OAuth callback)
   const forceRefreshAuth = () => {
-    console.log("Force refreshing auth status");
-    checkAuthStatus();
+    console.log("Force refreshing auth state");
+    const currentUser = getCurrentUser();
+    const isAuth = isAuthenticated();
+
+    setUser(currentUser);
+    setAuthenticated(isAuth);
+
+    console.log("Auth state refreshed:", {
+      user: currentUser,
+      authenticated: isAuth,
+    });
   };
+
+  // Set auth data directly (for OAuth callback)
+  const setAuthData = ({
+    user: userData,
+    authenticated: authStatus,
+    token,
+  }) => {
+    console.log("Setting auth data directly:", { userData, authStatus });
+    setUser(userData);
+    setAuthenticated(authStatus);
+  };
+
+  // Listen for auth:required events
+  useEffect(() => {
+    const handleAuthRequired = () => {
+      console.log(
+        "Authentication required event received, clearing auth state"
+      );
+      setUser(null);
+      setAuthenticated(false);
+    };
+
+    window.addEventListener("auth:required", handleAuthRequired);
+
+    return () => {
+      window.removeEventListener("auth:required", handleAuthRequired);
+    };
+  }, []);
 
   const value = {
     user,
@@ -174,10 +170,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateUser,
-    setAuthData,
-    refreshToken,
     forceRefreshAuth,
-    checkAuthStatus,
+    setAuthData,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

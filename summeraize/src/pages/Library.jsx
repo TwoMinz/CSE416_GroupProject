@@ -1,5 +1,4 @@
-// Library.jsx - 실패한 논문들 간단히 숨기기
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PaperCard from "../components/PaperCard";
 import UserToggle from "../components/UserToggle";
@@ -12,21 +11,25 @@ const Library = () => {
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showFailedPapers, setShowFailedPapers] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleClickWebLogo = () => {
     navigate("/");
   };
 
   // Fetch papers from the library API
-  useEffect(() => {
-    const fetchPapers = async () => {
+  const fetchPapers = useCallback(
+    async (showLoader = true) => {
       if (!authenticated || !user) {
         navigate("/login");
         return;
       }
 
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       setError(null);
 
       try {
@@ -43,21 +46,36 @@ const Library = () => {
         setError("Error loading library. Please try again.");
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
-    };
+    },
+    [authenticated, user, navigate]
+  );
 
+  useEffect(() => {
     fetchPapers();
-  }, [authenticated, user, navigate]);
+  }, [fetchPapers]);
+
+  // Auto-refresh every 30 seconds if there are processing papers
+  useEffect(() => {
+    const hasProcessingPapers = papers.some(
+      (paper) => paper.status === "processing"
+    );
+
+    if (hasProcessingPapers) {
+      const interval = setInterval(() => {
+        fetchPapers(false); // Don't show loader for auto-refresh
+      }, 30000); // 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [papers, fetchPapers]);
 
   // 표시할 논문들 필터링 - 기본적으로 실패한 논문은 숨김
   const getDisplayedPapers = () => {
     if (!papers) return [];
 
-    if (showFailedPapers) {
-      return papers; // 모든 논문 표시
-    } else {
-      return papers.filter((paper) => paper.status !== "failed"); // 실패한 논문 제외
-    }
+    return papers.filter((paper) => paper.status !== "failed"); // 실패한 논문 제외
   };
 
   // 논문 통계 계산
@@ -94,8 +112,9 @@ const Library = () => {
         },
       });
     } else if (paper && paper.status === "processing") {
+      // Show a more informative message for processing papers
       alert(
-        "This paper is still being processed. Please wait for it to complete."
+        "This paper is still being processed. It usually takes 1-2 minutes. The page will automatically refresh to show updates."
       );
     } else if (paper && paper.status === "failed") {
       alert("This paper failed to process. Please try uploading it again.");
@@ -110,6 +129,11 @@ const Library = () => {
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  // Manual refresh function
+  const handleRefresh = () => {
+    fetchPapers(false);
   };
 
   // Status badge component
@@ -177,7 +201,7 @@ const Library = () => {
       <div className="absolute top-5 right-5 z-10">
         <UserToggle
           onArchiveClick={() => {}} // Already on Archive/Library page
-          onSettingClick={() => console.log("Setting clicked")}
+          onSettingClick={() => navigate("/setting")}
           onLogoutClick={handleLogoutClick}
         />
       </div>
@@ -202,7 +226,89 @@ const Library = () => {
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-3xl font-bold text-gray-800">Your Library</h1>
+
+              {/* Refresh and Upload buttons */}
+              <div className="flex gap-3">
+                {stats.processing > 0 && !loading && (
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50"
+                  >
+                    {refreshing ? (
+                      <svg
+                        className="animate-spin h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                    )}
+                    {refreshing ? "Refreshing..." : "Refresh"}
+                  </button>
+                )}
+
+                <button
+                  onClick={() => navigate("/")}
+                  className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600 transition-colors"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Upload New Paper
+                </button>
+              </div>
             </div>
+
+            {/* Statistics */}
+            {stats.total > 0 && (
+              <div className="flex gap-4 text-sm text-gray-600 mb-4">
+                <span className="bg-green-100 px-3 py-1 rounded-full">
+                  {stats.completed} Completed
+                </span>
+                {stats.processing > 0 && (
+                  <span className="bg-blue-100 px-3 py-1 rounded-full">
+                    {stats.processing} Processing
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Loading state */}
@@ -242,17 +348,7 @@ const Library = () => {
                   <h3 className="text-2xl font-semibold text-gray-600 mb-2">
                     All papers are hidden
                   </h3>
-                  <p className="text-gray-500 mb-6">
-                    You have {stats.failed} failed papers. Check "Show failed
-                    papers" to see them.
-                  </p>
                   <div className="flex gap-4 justify-center">
-                    <button
-                      onClick={() => setShowFailedPapers(true)}
-                      className="bg-gray-500 text-white px-6 py-2 rounded-full hover:bg-gray-600 transition-colors"
-                    >
-                      Show Failed Papers
-                    </button>
                     <button
                       onClick={() => navigate("/")}
                       className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition-colors"
@@ -270,7 +366,6 @@ const Library = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {displayedPapers.map((paper) => (
                 <div className="flex justify-center relative" key={paper.id}>
-                  {/* Status badge overlay - 완료가 아닌 경우에만 표시 */}
                   {paper.status !== "completed" && (
                     <div className="absolute top-2 left-2 z-10">
                       <StatusBadge status={paper.status} />
@@ -309,6 +404,41 @@ const Library = () => {
               ))}
             </div>
           )}
+
+          {/* Processing papers notice */}
+          {stats.processing > 0 && !loading && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 text-blue-800">
+                <svg
+                  className="animate-spin h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <span className="font-medium">
+                  {stats.processing} paper
+                  {stats.processing > 1 ? "s are" : " is"} currently processing
+                </span>
+              </div>
+              <p className="text-sm text-blue-600 mt-1">
+                Processing usually takes 2-3 minutes. This page automatically
+                refreshes every 30 seconds.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -323,7 +453,7 @@ const Library = () => {
         </h2>
 
         {authenticated && user && (
-          <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+          <div className="flex items-center justify-center space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mx-auto w-fit">
             <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/50">
               <img
                 src={user.profilePicture}

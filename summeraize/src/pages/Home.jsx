@@ -57,7 +57,6 @@ const Home = () => {
           >
             SummarAIze
           </h2>
-          {/* 개선된 사용자 환영 메시지 */}
           {authenticated && user && (
             <div className="ml-6 flex items-center space-x-3">
               <div className="text-white">

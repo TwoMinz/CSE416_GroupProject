@@ -2,7 +2,6 @@
 const jwt = require("jsonwebtoken");
 const {
   getDynamoDBClient,
-  getWebSocketClient,
   getLambdaClient,
 } = require("../../utils/aws-config");
 require("dotenv").config();
@@ -17,30 +16,10 @@ const verifyToken = (token) => {
   }
 };
 
-// Send WebSocket message
-const sendWebSocketMessage = async (connectionId, message) => {
-  try {
-    const websocketAPI = getWebSocketClient();
-
-    await websocketAPI
-      .postToConnection({
-        ConnectionId: connectionId,
-        Data: JSON.stringify(message),
-      })
-      .promise();
-
-    return true;
-  } catch (error) {
-    console.error(`[CONFIRM-UPLOAD] Error sending WebSocket message:`, error);
-    return false;
-  }
-};
-
 // Trigger paper processing
 const triggerPaperProcessing = async (paperId, fileKey, userId) => {
   const lambda = getLambdaClient();
 
-  // Debug logging
   console.log("[CONFIRM-UPLOAD] Triggering paper processing with:", {
     paperId,
     fileKey,
@@ -51,7 +30,6 @@ const triggerPaperProcessing = async (paperId, fileKey, userId) => {
   });
 
   try {
-    // Properly format the payload with all required fields
     const payload = {
       paperId: paperId,
       fileKey: fileKey,
@@ -75,11 +53,10 @@ const triggerPaperProcessing = async (paperId, fileKey, userId) => {
   }
 };
 
-const markPaperAsFailed = async (paperId, errorMessage, userId) => {
+const markPaperAsFailed = async (paperId, errorMessage) => {
   try {
     const documentClient = getDynamoDBClient();
 
-    // paperId 타입 확인
     const paperIdKey =
       typeof paperId === "string" && !isNaN(parseInt(paperId))
         ? parseInt(paperId)
@@ -89,7 +66,6 @@ const markPaperAsFailed = async (paperId, errorMessage, userId) => {
       `[MARK-FAILED] Marking paper ${paperIdKey} as failed: ${errorMessage}`
     );
 
-    // 상태를 failed로 업데이트
     await documentClient
       .update({
         TableName: process.env.PAPERS_TABLE,
@@ -112,23 +88,12 @@ const markPaperAsFailed = async (paperId, errorMessage, userId) => {
       `[MARK-FAILED] Paper ${paperIdKey} marked as failed successfully`
     );
 
-    // WebSocket을 통해 사용자에게 실패 알림
-    if (userId) {
-      await sendStatusUpdate(
-        userId,
-        paperId,
-        "failed",
-        `Processing failed: ${errorMessage}`
-      );
-    }
-
     return true;
   } catch (updateError) {
     console.error(
       `[MARK-FAILED] Failed to mark paper ${paperId} as failed:`,
       updateError
     );
-    // 상태 업데이트에 실패해도 원본 에러를 유지
     return false;
   }
 };
@@ -234,7 +199,7 @@ module.exports.handler = async (event) => {
       console.error("[CONFIRM-UPLOAD] Error retrieving paper record:", error);
       throw new Error(`Failed to retrieve paper: ${error.message}`);
     }
-    console.log("[VERIFYING PAPER] ", paper);
+
     // Verify paper ownership
     if (paper.userId != userId) {
       return {
@@ -256,13 +221,12 @@ module.exports.handler = async (event) => {
     let expressionAttributeValues = {
       ":timestamp": timestamp,
     };
-    // 표현식 속성 이름 추가
     let expressionAttributeNames = {};
 
     if (uploadSuccess) {
       updateExpression += ", #status = :status";
       expressionAttributeValues[":status"] = "processing";
-      expressionAttributeNames["#status"] = "status"; // 예약어 처리
+      expressionAttributeNames["#status"] = "status";
 
       // Update title if provided
       if (fileName) {
@@ -272,7 +236,7 @@ module.exports.handler = async (event) => {
     } else {
       updateExpression += ", #status = :status";
       expressionAttributeValues[":status"] = "failed";
-      expressionAttributeNames["#status"] = "status"; // 예약어 처리
+      expressionAttributeNames["#status"] = "status";
     }
 
     try {
@@ -284,7 +248,7 @@ module.exports.handler = async (event) => {
           },
           UpdateExpression: updateExpression,
           ExpressionAttributeValues: expressionAttributeValues,
-          ExpressionAttributeNames: expressionAttributeNames, // 속성 이름 추가
+          ExpressionAttributeNames: expressionAttributeNames,
           ReturnValues: "ALL_NEW",
         })
         .promise();
@@ -310,35 +274,7 @@ module.exports.handler = async (event) => {
 
       if (!processingTriggered) {
         console.warn("[CONFIRM-UPLOAD] Failed to trigger paper processing");
-        await markPaperAsFailed(paperId, "Failed to start processing", userId);
-      }
-
-      try {
-        // Get user's active connections
-        const connectionsResult = await documentClient
-          .query({
-            TableName: process.env.CONNECTIONS_TABLE,
-            IndexName: "UserIdIndex",
-            KeyConditionExpression: "userId = :userId",
-            ExpressionAttributeValues: {
-              ":userId": userId,
-            },
-          })
-          .promise();
-
-        // Send status update to all user's connections
-        if (connectionsResult.Items && connectionsResult.Items.length > 0) {
-          for (const connection of connectionsResult.Items) {
-            await sendWebSocketMessage(connection.connectionId, {
-              type: "PAPER_STATUS_UPDATE",
-              paperId,
-              status: "processing",
-              message: "Paper processing started",
-            });
-          }
-        }
-      } catch (error) {
-        console.error("[CONFIRM-UPLOAD] WebSocket error:", error);
+        await markPaperAsFailed(paperId, "Failed to start processing");
       }
     }
 
