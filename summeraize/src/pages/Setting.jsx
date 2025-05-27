@@ -44,21 +44,21 @@ const Setting = () => {
 
   // Initialize state with user information
   useEffect(() => {
-  if (authenticated && user) {
-    console.log("User:", user);
-    setNickname(user.username || "Nickname");
-    setLanguage(user.transLang || 1);
-    setEmail(user.email || "");
-    
-    // 프로필 이미지 URL 설정
-    if (user.profilePicture) {
-      setProfileImageUrl(user.profilePicture);
+    if (authenticated && user) {
+      console.log("User:", user);
+      setNickname(user.username || "Nickname");
+      setLanguage(user.transLang || 1);
+      setEmail(user.email || "");
+
+      // 프로필 이미지 URL 설정
+      if (user.profilePicture) {
+        setProfileImageUrl(user.profilePicture);
+      }
+    } else {
+      // Redirect if not authenticated
+      navigate("/login");
     }
-  } else {
-    // Redirect if not authenticated
-    navigate("/login");
-  }
-}, [authenticated, user, navigate]);
+  }, [authenticated, user, navigate]);
 
   const handleBackClick = () => {
     navigate("/");
@@ -70,28 +70,6 @@ const Setting = () => {
 
   const handleNicknameChange = (e) => {
     setNickname(e.target.value);
-  };
-
-  const uploadToCloudinary = async (file) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', 'ml_default'); // 여기에 실제 upload preset 입력
-  
-  try {
-    const response = await fetch(
-      'https://api.cloudinary.com/v1_1/daqrxgtih/image/upload', // 여기에 실제 cloud name 입력
-      {
-        method: 'POST',
-        body: formData,
-      }
-    );
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Cloudinary upload error:', error);
-    throw error;
-  }
   };
 
   // Save nickname when finished editing
@@ -248,16 +226,16 @@ const Setting = () => {
     if (!selectedFile) return;
 
     // File type validation
-    const validTypes = ["image/jpeg", "image/png", "image/jpg"];
+    const validTypes = ["image/jpeg", "image/png", "image/jpg", "image/gif"];
     if (!validTypes.includes(selectedFile.type)) {
-      openPopup("Error", "Please select a PNG or JPG image.");
+      openPopup("Error", "Please select a PNG, JPG, or GIF image.");
       return;
     }
 
-    // File size validation (max 2MB)
-    const maxSize = 2 * 1024 * 1024; // 2MB
+    // File size validation (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
     if (selectedFile.size > maxSize) {
-      openPopup("Error", "Image size should not exceed 2MB.");
+      openPopup("Error", "Image size should not exceed 5MB.");
       return;
     }
 
@@ -265,40 +243,36 @@ const Setting = () => {
       setIsUploadingImage(true);
       setUploadProgress(20);
 
-      console.log("Starting Cloudinary upload...");
-      
-      // Cloudinary에 업로드
-      const cloudinaryResult = await uploadToCloudinary(selectedFile);
+      console.log("Starting profile image upload...");
+
+      // uploadProfileImage가 Cloudinary 업로드 + 백엔드 URL 업데이트를 모두 처리
+      const result = await uploadProfileImage(selectedFile);
+
       setUploadProgress(80);
 
-      if (cloudinaryResult && cloudinaryResult.secure_url) {
-        console.log("Cloudinary upload successful!");
-        console.log("Image URL:", cloudinaryResult.secure_url);
-        console.log("Full Cloudinary response:", cloudinaryResult);
-        
+      if (result && result.success) {
+        console.log("Profile image upload successful!");
         setUploadProgress(100);
-        
-        // ✨ 새로 추가: 업로드된 이미지를 바로 프로필에 표시
-        setProfileImageUrl(cloudinaryResult.secure_url);
-        
-        // 여기서 나중에 백엔드 API 호출을 추가할 예정
-        // const result = await updateUserProfileImage(user.userId, cloudinaryResult.secure_url);
-        
-        openPopup("Success", "Profile picture has been uploaded! (Not saved to server yet)");
-        
-        // 임시로 콘솔에만 로그 출력
-        console.log("이미지 링크가 준비되었습니다:", cloudinaryResult.secure_url);
-        
+
+        // Update local state
+        if (result.user && result.user.profilePicture) {
+          setProfileImageUrl(result.user.profilePicture);
+
+          if (updateUser) {
+            updateUser(result.user);
+          }
+        }
+
+        openPopup("Success", "Profile picture has been updated successfully!");
       } else {
-        throw new Error("Failed to get image URL from Cloudinary");
+        throw new Error(result?.message || "Failed to upload profile image");
       }
     } catch (error) {
-      console.error("Error uploading to Cloudinary:", error);
+      console.error("Error uploading profile image:", error);
       openPopup("Error", `Failed to upload image: ${error.message}`);
     } finally {
       setIsUploadingImage(false);
       setUploadProgress(0);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -350,11 +324,13 @@ const Setting = () => {
                 {isUploadingImage && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center rounded-full">
                     <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <div className="text-white mt-2 text-sm">{uploadProgress}%</div>
+                    <div className="text-white mt-2 text-sm">
+                      {uploadProgress}%
+                    </div>
                   </div>
                 )}
               </div>
-              
+
               {/* Edit button */}
               <button
                 onClick={handlePictureButtonClick}

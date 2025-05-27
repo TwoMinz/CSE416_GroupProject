@@ -321,6 +321,24 @@ const Library = () => {
         >
           SummarAIze
         </h2>
+
+        {authenticated && user && (
+          <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/50">
+              <img
+                src={user.profilePicture}
+                alt="Profile"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.src = "/default-avatar.png";
+                }}
+              />
+            </div>
+            <span className="text-white text-sm font-medium">
+              {user.username}'s Library
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

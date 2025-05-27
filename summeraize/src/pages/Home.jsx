@@ -57,10 +57,24 @@ const Home = () => {
           >
             SummarAIze
           </h2>
-          {authenticated && (
-            <span className="ml-4 text-white text-sm bg-blue-400 px-3 py-1 rounded-full">
-              Welcome, {user?.username || "User"}
-            </span>
+          {/* 개선된 사용자 환영 메시지 */}
+          {authenticated && user && (
+            <div className="ml-6 flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50">
+                <img
+                  src={user.profilePicture || "/default-avatar.png"}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.src = "/default-avatar.png";
+                  }}
+                />
+              </div>
+              <div className="text-white">
+                <p className="text-sm font-medium">Welcome back,</p>
+                <p className="text-lg font-bold">{user.username}</p>
+              </div>
+            </div>
           )}
         </div>
 

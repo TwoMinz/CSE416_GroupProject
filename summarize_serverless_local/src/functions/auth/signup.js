@@ -1,8 +1,14 @@
+// signup.js 파일 수정 - 기본 프로필 이미지 URL 변경
+
 "use strict";
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
 const { getDynamoDBClient } = require("../../utils/aws-config");
 require("dotenv").config();
+
+// 기본 프로필 이미지 URL
+const DEFAULT_PROFILE_IMAGE =
+  "https://res.cloudinary.com/dwp2p4j4c/image/upload/w_1000,ar_1:1,c_fill,g_auto,e_art:hokusai/v1740647331/v6o86i9ilinarcyjatsx.png";
 
 module.exports.handler = async (event) => {
   try {
@@ -57,7 +63,7 @@ module.exports.handler = async (event) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user
+    // Create new user with default profile image
     const userId = Date.now() + Math.floor(Math.random() * 1000);
     const createdAt = new Date().toISOString();
 
@@ -66,7 +72,7 @@ module.exports.handler = async (event) => {
       email,
       password: hashedPassword,
       username,
-      profilePicture: "https://example.com/default-avatar.png", // Default profile picture
+      profilePicture: DEFAULT_PROFILE_IMAGE, // 새로운 기본 이미지 사용
       transLang: 1, // Default language (1 = English)
       createdAt,
     };

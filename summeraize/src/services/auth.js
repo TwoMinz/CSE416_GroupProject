@@ -233,11 +233,9 @@ const changePassword = async (userId, newPassword, currentPassword = null) => {
   }
 };
 
-const changeProfileImage = async (userId, fileKey) => {
+const updateProfileImageUrl = async (userId, imageUrl) => {
   try {
-    console.log(
-      `Updating profile image for user ${userId} with file key: ${fileKey}`
-    );
+    console.log(`Updating profile image URL for user ${userId}`);
     const token = getToken();
 
     const response = await apiRequest(
@@ -245,7 +243,7 @@ const changeProfileImage = async (userId, fileKey) => {
       "POST",
       {
         userId,
-        fileKey,
+        imageUrl,
       },
       token
     );
@@ -253,16 +251,43 @@ const changeProfileImage = async (userId, fileKey) => {
     if (response.success && response.user) {
       // Update user in local storage
       localStorage.setItem(USER_KEY, JSON.stringify(response.user));
-      console.log("Profile image updated successfully:", response.user);
+      console.log("Profile image URL updated successfully");
     }
 
     return response;
   } catch (error) {
-    console.error("Error changing profile image:", error);
+    console.error("Error updating profile image URL:", error);
     throw error;
   }
 };
 
+const uploadToCloudinary = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "ml_default"); // 실제 preset으로 변경
+
+  try {
+    const response = await fetch(
+      "https://api.cloudinary.com/v1_1/daqrxgtih/image/upload", // 실제 cloud name으로 변경
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Cloudinary upload failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Cloudinary upload error:", error);
+    throw error;
+  }
+};
+
+// 수정된 uploadProfileImage 함수
 const uploadProfileImage = async (file) => {
   try {
     const user = getCurrentUser();
@@ -271,64 +296,48 @@ const uploadProfileImage = async (file) => {
     }
 
     console.log(`Uploading profile image for user ${user.userId}`);
-    const token = getToken();
-
-    if (!token) {
-      throw new Error("Authorization token is required");
-    }
 
     // File type validation
-    const validTypes = ["image/jpeg", "image/png", "image/jpg"];
+    const validTypes = ["image/jpeg", "image/png", "image/jpg", "image/gif"];
     if (!validTypes.includes(file.type)) {
-      throw new Error("Only JPG and PNG images are allowed");
+      throw new Error("Only JPG, PNG, and GIF images are allowed");
     }
 
-    // File size validation (max 2MB)
-    const maxSize = 2 * 1024 * 1024;
+    // File size validation (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      throw new Error("Image size should not exceed 2MB");
+      throw new Error("Image size should not exceed 5MB");
     }
 
-    // Convert file to Base64
-    const base64Data = await fileToBase64(file);
-    // Send directly to server
-    const response = await apiRequest(
-      "/api/profile/upload",
-      "POST",
-      {
-        userId: user.userId,
-        fileName: file.name,
-        fileType: file.type,
-        imageData: base64Data,
-      },
-      token
+    // Step 1: Upload to Cloudinary
+    console.log("Uploading to Cloudinary...");
+    const cloudinaryResult = await uploadToCloudinary(file);
+
+    if (!cloudinaryResult || !cloudinaryResult.secure_url) {
+      throw new Error("Failed to upload image to Cloudinary");
+    }
+
+    console.log("Cloudinary upload successful:", cloudinaryResult.secure_url);
+
+    // Step 2: Update user profile URL in database
+    console.log("Updating profile URL in database...");
+    const response = await updateProfileImageUrl(
+      user.userId,
+      cloudinaryResult.secure_url
     );
 
     if (!response.success) {
-      throw new Error(response.message || "Failed to upload profile image");
+      throw new Error(
+        response.message || "Failed to update profile in database"
+      );
     }
 
-    // Update user in local storage
-    if (response.user) {
-      localStorage.setItem(USER_KEY, JSON.stringify(response.user));
-    }
-
-    console.log("Profile image uploaded successfully");
+    console.log("Profile image updated successfully");
     return response;
   } catch (error) {
     console.error("Profile image upload error:", error);
     throw error;
   }
-};
-
-// 파일을 Base64로 변환하는 헬퍼 함수
-const fileToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-  });
 };
 
 const changeLanguage = async (userId, languageCode) => {
@@ -415,7 +424,7 @@ export {
   isAuthenticated,
   changeUsername,
   changePassword,
-  changeProfileImage,
+  updateProfileImageUrl,
   uploadProfileImage,
   changeLanguage,
   processOAuthRedirect,

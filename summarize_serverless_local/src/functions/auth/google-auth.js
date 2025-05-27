@@ -122,8 +122,7 @@ module.exports.handler = async (event) => {
         id: userId, // Use numeric ID consistent with other parts
         email: userInfo.email,
         username: userInfo.name || userInfo.email.split("@")[0],
-        profilePicture:
-          userInfo.picture || "https://example.com/default-avatar.png",
+        profilePicture: userInfo.picture || DEFAULT_PROFILE_IMAGE, // Google 프로필 이미지가 없으면 기본 이미지 사용
         transLang: 1, // Default language (1 = English)
         authProvider: "google",
         googleId: userInfo.sub,
