@@ -1,3 +1,4 @@
+// Library.jsx - 실패한 논문들 간단히 숨기기
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PaperCard from "../components/PaperCard";
@@ -11,6 +12,7 @@ const Library = () => {
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showFailedPapers, setShowFailedPapers] = useState(false);
 
   const handleClickWebLogo = () => {
     navigate("/");
@@ -47,6 +49,32 @@ const Library = () => {
     fetchPapers();
   }, [authenticated, user, navigate]);
 
+  // 표시할 논문들 필터링 - 기본적으로 실패한 논문은 숨김
+  const getDisplayedPapers = () => {
+    if (!papers) return [];
+
+    if (showFailedPapers) {
+      return papers; // 모든 논문 표시
+    } else {
+      return papers.filter((paper) => paper.status !== "failed"); // 실패한 논문 제외
+    }
+  };
+
+  // 논문 통계 계산
+  const getPaperStats = () => {
+    if (!papers) return { completed: 0, processing: 0, failed: 0, total: 0 };
+
+    return {
+      completed: papers.filter((p) => p.status === "completed").length,
+      processing: papers.filter((p) => p.status === "processing").length,
+      failed: papers.filter((p) => p.status === "failed").length,
+      total: papers.length,
+    };
+  };
+
+  const stats = getPaperStats();
+  const displayedPapers = getDisplayedPapers();
+
   // Handle star toggle
   const handleToggleStar = async (paperId, isStarred) => {
     console.log("Star toggled for", paperId, "New state:", isStarred);
@@ -55,12 +83,23 @@ const Library = () => {
 
   // Handle paper click to navigate to BookStand
   const handlePaperClick = (paperId) => {
-    console.log("Navigating to BookStand with paperId:", paperId);
-    navigate("/bookstand", {
-      state: {
-        paperId: paperId,
-      },
-    });
+    const paper = papers.find((p) => p.id === paperId);
+
+    // 완료된 논문만 BookStand로 이동 가능
+    if (paper && paper.status === "completed") {
+      console.log("Navigating to BookStand with paperId:", paperId);
+      navigate("/bookstand", {
+        state: {
+          paperId: paperId,
+        },
+      });
+    } else if (paper && paper.status === "processing") {
+      alert(
+        "This paper is still being processed. Please wait for it to complete."
+      );
+    } else if (paper && paper.status === "failed") {
+      alert("This paper failed to process. Please try uploading it again.");
+    }
   };
 
   // Handle user options
@@ -71,6 +110,65 @@ const Library = () => {
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  // Status badge component
+  const StatusBadge = ({ status }) => {
+    const getStatusColor = () => {
+      switch (status) {
+        case "completed":
+          return "bg-green-100 text-green-800";
+        case "processing":
+          return "bg-blue-100 text-blue-800";
+        case "failed":
+          return "bg-red-100 text-red-800";
+        default:
+          return "bg-gray-100 text-gray-800";
+      }
+    };
+
+    const getStatusText = () => {
+      switch (status) {
+        case "completed":
+          return "Ready";
+        case "processing":
+          return "Processing...";
+        case "failed":
+          return "Failed";
+        default:
+          return "Unknown";
+      }
+    };
+
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor()}`}
+      >
+        {status === "processing" && (
+          <svg
+            className="animate-spin -ml-1 mr-1 h-3 w-3"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+        )}
+        {getStatusText()}
+      </span>
+    );
   };
 
   return (
@@ -100,6 +198,13 @@ const Library = () => {
             }
           `}</style>
 
+          {/* Library Header */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h1 className="text-3xl font-bold text-gray-800">Your Library</h1>
+            </div>
+          </div>
+
           {/* Loading state */}
           {loading && (
             <div className="flex justify-center items-center h-40">
@@ -115,28 +220,63 @@ const Library = () => {
           )}
 
           {/* Empty state */}
-          {!loading && !error && papers.length === 0 && (
+          {!loading && !error && displayedPapers.length === 0 && (
             <div className="text-center py-16">
-              <h3 className="text-2xl font-semibold text-gray-600 mb-2">
-                Your library is empty
-              </h3>
-              <p className="text-gray-500 mb-6">
-                Upload papers from the home page to see them here
-              </p>
-              <button
-                onClick={() => navigate("/")}
-                className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition-colors"
-              >
-                Upload Paper
-              </button>
+              {stats.total === 0 ? (
+                <>
+                  <h3 className="text-2xl font-semibold text-gray-600 mb-2">
+                    Your library is empty
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Upload papers from the home page to see them here
+                  </p>
+                  <button
+                    onClick={() => navigate("/")}
+                    className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition-colors"
+                  >
+                    Upload Paper
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-2xl font-semibold text-gray-600 mb-2">
+                    All papers are hidden
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    You have {stats.failed} failed papers. Check "Show failed
+                    papers" to see them.
+                  </p>
+                  <div className="flex gap-4 justify-center">
+                    <button
+                      onClick={() => setShowFailedPapers(true)}
+                      className="bg-gray-500 text-white px-6 py-2 rounded-full hover:bg-gray-600 transition-colors"
+                    >
+                      Show Failed Papers
+                    </button>
+                    <button
+                      onClick={() => navigate("/")}
+                      className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition-colors"
+                    >
+                      Upload New Paper
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {/* Library grid */}
-          {!loading && !error && papers.length > 0 && (
+          {!loading && !error && displayedPapers.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {papers.map((paper) => (
-                <div className="flex justify-center" key={paper.id}>
+              {displayedPapers.map((paper) => (
+                <div className="flex justify-center relative" key={paper.id}>
+                  {/* Status badge overlay - 완료가 아닌 경우에만 표시 */}
+                  {paper.status !== "completed" && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <StatusBadge status={paper.status} />
+                    </div>
+                  )}
+
                   <PaperCard
                     key={paper.id}
                     paper={{
@@ -158,6 +298,7 @@ const Library = () => {
                         }
                       ),
                       starred: paper.starred || false,
+                      status: paper.status,
                     }}
                     onToggleStar={() =>
                       handleToggleStar(paper.id, !paper.starred)

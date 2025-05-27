@@ -75,6 +75,64 @@ const triggerPaperProcessing = async (paperId, fileKey, userId) => {
   }
 };
 
+const markPaperAsFailed = async (paperId, errorMessage, userId) => {
+  try {
+    const documentClient = getDynamoDBClient();
+
+    // paperId 타입 확인
+    const paperIdKey =
+      typeof paperId === "string" && !isNaN(parseInt(paperId))
+        ? parseInt(paperId)
+        : paperId;
+
+    console.log(
+      `[MARK-FAILED] Marking paper ${paperIdKey} as failed: ${errorMessage}`
+    );
+
+    // 상태를 failed로 업데이트
+    await documentClient
+      .update({
+        TableName: process.env.PAPERS_TABLE,
+        Key: { id: paperIdKey },
+        UpdateExpression:
+          "SET #status = :status, errorMessage = :errorMessage, lastUpdated = :timestamp",
+        ExpressionAttributeValues: {
+          ":status": "failed",
+          ":errorMessage":
+            errorMessage || "Processing failed due to unknown error",
+          ":timestamp": new Date().toISOString(),
+        },
+        ExpressionAttributeNames: {
+          "#status": "status",
+        },
+      })
+      .promise();
+
+    console.log(
+      `[MARK-FAILED] Paper ${paperIdKey} marked as failed successfully`
+    );
+
+    // WebSocket을 통해 사용자에게 실패 알림
+    if (userId) {
+      await sendStatusUpdate(
+        userId,
+        paperId,
+        "failed",
+        `Processing failed: ${errorMessage}`
+      );
+    }
+
+    return true;
+  } catch (updateError) {
+    console.error(
+      `[MARK-FAILED] Failed to mark paper ${paperId} as failed:`,
+      updateError
+    );
+    // 상태 업데이트에 실패해도 원본 에러를 유지
+    return false;
+  }
+};
+
 module.exports.handler = async (event) => {
   try {
     console.log("[CONFIRM-UPLOAD] Processing upload confirmation");
@@ -244,8 +302,6 @@ module.exports.handler = async (event) => {
     if (uploadSuccess) {
       console.log("[CONFIRM-UPLOAD] Upload successful, triggering processing");
 
-      // In production, this would be handled by the S3 trigger
-      // But we'll trigger it manually to ensure processing starts
       const processingTriggered = await triggerPaperProcessing(
         paperId,
         fileKey,
@@ -254,9 +310,9 @@ module.exports.handler = async (event) => {
 
       if (!processingTriggered) {
         console.warn("[CONFIRM-UPLOAD] Failed to trigger paper processing");
+        await markPaperAsFailed(paperId, "Failed to start processing", userId);
       }
 
-      // Get websocket connections for this user (if any) to send status updates
       try {
         // Get user's active connections
         const connectionsResult = await documentClient
@@ -283,7 +339,6 @@ module.exports.handler = async (event) => {
         }
       } catch (error) {
         console.error("[CONFIRM-UPLOAD] WebSocket error:", error);
-        // Continue even if WebSocket update fails
       }
     }
 
@@ -304,6 +359,24 @@ module.exports.handler = async (event) => {
     };
   } catch (error) {
     console.error("[CONFIRM-UPLOAD] Unhandled error:", error);
+
+    try {
+      const body =
+        typeof event.body === "string" ? JSON.parse(event.body) : event.body;
+      const { paperId } = body;
+
+      if (paperId) {
+        await markPaperAsFailed(
+          paperId,
+          `Unexpected error in confirm upload: ${error.message}`
+        );
+      }
+    } catch (markError) {
+      console.error(
+        "[CONFIRM-UPLOAD] Failed to mark paper as failed:",
+        markError
+      );
+    }
 
     return {
       statusCode: 500,

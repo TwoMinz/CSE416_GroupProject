@@ -11,6 +11,10 @@ require("dotenv").config();
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true, // 브라우저 환경에서 실행될 경우 필요
+  defaultHeaders: {
+    "Content-Type": "application/json",
+  },
 });
 
 // Helper function for retry with exponential backoff
@@ -718,14 +722,14 @@ const processPaper = async (paperId, fileKey, userId) => {
               summaryKey = :summaryKey, 
               lastUpdated = :timestamp,
               title = :title,
-              language = :language
+              lang = :lang
         `,
         ExpressionAttributeValues: {
           ":status": "completed",
           ":summaryKey": summaryKey,
           ":timestamp": new Date().toISOString(),
           ":title": analysis.title || "Untitled Paper",
-          ":language": userLanguagePreference,
+          ":lang": userLanguagePreference,
         },
         ExpressionAttributeNames: {
           "#status": "status",
@@ -777,6 +781,7 @@ const processPaper = async (paperId, fileKey, userId) => {
         updateError
       );
     }
+    await markPaperAsFailed(paperId, error.message, userId);
 
     return {
       success: false,
@@ -1217,6 +1222,64 @@ const generateMarkdownFromCombined = (combinedAnalysis, language) => {
   markdown += `### ${titles.apaFormat}\n${citation.apa}\n\n`;
 
   return markdown;
+};
+
+const markPaperAsFailed = async (paperId, errorMessage, userId) => {
+  try {
+    const documentClient = getDynamoDBClient();
+
+    // paperId 타입 확인
+    const paperIdKey =
+      typeof paperId === "string" && !isNaN(parseInt(paperId))
+        ? parseInt(paperId)
+        : paperId;
+
+    console.log(
+      `[MARK-FAILED] Marking paper ${paperIdKey} as failed: ${errorMessage}`
+    );
+
+    // 상태를 failed로 업데이트
+    await documentClient
+      .update({
+        TableName: process.env.PAPERS_TABLE,
+        Key: { id: paperIdKey },
+        UpdateExpression:
+          "SET #status = :status, errorMessage = :errorMessage, lastUpdated = :timestamp",
+        ExpressionAttributeValues: {
+          ":status": "failed",
+          ":errorMessage":
+            errorMessage || "Processing failed due to unknown error",
+          ":timestamp": new Date().toISOString(),
+        },
+        ExpressionAttributeNames: {
+          "#status": "status",
+        },
+      })
+      .promise();
+
+    console.log(
+      `[MARK-FAILED] Paper ${paperIdKey} marked as failed successfully`
+    );
+
+    // WebSocket을 통해 사용자에게 실패 알림
+    if (userId) {
+      await sendStatusUpdate(
+        userId,
+        paperId,
+        "failed",
+        `Processing failed: ${errorMessage}`
+      );
+    }
+
+    return true;
+  } catch (updateError) {
+    console.error(
+      `[MARK-FAILED] Failed to mark paper ${paperId} as failed:`,
+      updateError
+    );
+    // 상태 업데이트에 실패해도 원본 에러를 유지
+    return false;
+  }
 };
 
 module.exports.handler = async (event) => {
