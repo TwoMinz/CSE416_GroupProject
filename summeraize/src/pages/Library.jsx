@@ -95,8 +95,7 @@ const Library = () => {
 
   // Handle star toggle
   const handleToggleStar = async (paperId, isStarred) => {
-    console.log("Star toggled for", paperId, "New state:", isStarred);
-    // TODO: Implement API call to toggle star status
+    // removed star feature
   };
 
   // Handle paper click to navigate to BookStand
@@ -105,7 +104,6 @@ const Library = () => {
 
     // 완료된 논문만 BookStand로 이동 가능
     if (paper && paper.status === "completed") {
-      console.log("Navigating to BookStand with paperId:", paperId);
       navigate("/bookstand", {
         state: {
           paperId: paperId,
@@ -114,7 +112,7 @@ const Library = () => {
     } else if (paper && paper.status === "processing") {
       // Show a more informative message for processing papers
       alert(
-        "This paper is still being processed. It usually takes 1-2 minutes. The page will automatically refresh to show updates."
+        "This paper is still being processed. It usually takes 2-3 minutes. The page will automatically refresh to show updates."
       );
     } else if (paper && paper.status === "failed") {
       alert("This paper failed to process. Please try uploading it again.");

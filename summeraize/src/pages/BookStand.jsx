@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import SimplePdfReader from "../components/PdfReader";
 import MdFileReader from "../components/MdFileReader";
@@ -18,6 +18,54 @@ const BookStand = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [processingStatus, setProcessingStatus] = useState(null);
+  const [urlRefreshCount, setUrlRefreshCount] = useState(0);
+
+  // URL 갱신 함수
+  const refreshContentUrls = useCallback(async () => {
+    if (!paperId || !user || !authenticated) return;
+
+    try {
+      console.log("Refreshing content URLs due to expiration...");
+      const token = localStorage.getItem("summaraize-token");
+      const urlResponse = await getContentUrl(paperId, token);
+
+      if (urlResponse.pdfUrl) {
+        console.log("PDF URL refreshed");
+        setPdfUrl(urlResponse.pdfUrl);
+      }
+
+      if (urlResponse.summaryUrl) {
+        console.log("Summary URL refreshed");
+        setSummaryUrl(urlResponse.summaryUrl);
+      }
+
+      setUrlRefreshCount((prev) => prev + 1);
+    } catch (error) {
+      console.error("Error refreshing content URLs:", error);
+      setError("Failed to refresh content URLs. Please try again.");
+    }
+  }, [paperId, user, authenticated]);
+
+  // Helper function to refresh content for papers still in processing
+  const refreshContent = useCallback(
+    async (id, token) => {
+      if (!id || !token || processingStatus === "completed") return;
+
+      try {
+        console.log("Refreshing content for paper:", id);
+        const urlResponse = await getContentUrl(id, token);
+
+        if (urlResponse.summaryUrl) {
+          console.log("Summary now available");
+          setSummaryUrl(urlResponse.summaryUrl);
+          setProcessingStatus("completed");
+        }
+      } catch (error) {
+        console.error("Error refreshing content:", error);
+      }
+    },
+    [processingStatus]
+  );
 
   // Get paperId from location state
   useEffect(() => {
@@ -50,33 +98,34 @@ const BookStand = () => {
         const token = localStorage.getItem("summaraize-token");
         console.log("Loading paper content for ID:", paperId);
 
-        // Request content URLs for both PDF and summary
         const urlResponse = await getContentUrl(paperId, token);
         console.log("Content URLs response:", urlResponse);
 
-        // Set PDF URL if available
         if (urlResponse.pdfUrl) {
           console.log("PDF URL received");
           setPdfUrl(urlResponse.pdfUrl);
+
+          // URL 만료 시간 추적 (1시간 45분 후 자동 갱신)
+          setTimeout(() => {
+            console.log("PDF URL will expire soon, refreshing...");
+            refreshContentUrls();
+          }, 105 * 60 * 1000); // 1시간 45분
         }
 
-        // Set summary URL if available
         if (urlResponse.summaryUrl) {
           console.log("Summary URL received");
           setSummaryUrl(urlResponse.summaryUrl);
           setProcessingStatus("completed");
         } else {
-          // If no summary URL, show a processing message without WebSocket updates
           console.log("No summary URL available, showing processing message");
           setMdContent(
             "# Paper is still processing\n\nThis paper is still being processed. The summary will be available once processing is complete.\n\nPlease check back later or refresh this page."
           );
           setProcessingStatus("processing");
 
-          // Attempt to refresh content after a delay (optional)
           setTimeout(() => {
             refreshContent(paperId, token);
-          }, 10000); // Try again after 10 seconds
+          }, 10000);
         }
       } catch (error) {
         console.error("Error loading paper:", error);
@@ -87,25 +136,15 @@ const BookStand = () => {
     };
 
     loadPaperContent();
-  }, [paperId, authenticated, user, navigate]);
-
-  // Helper function to refresh content for papers still in processing
-  const refreshContent = async (id, token) => {
-    if (!id || !token || processingStatus === "completed") return;
-
-    try {
-      console.log("Refreshing content for paper:", id);
-      const urlResponse = await getContentUrl(id, token);
-
-      if (urlResponse.summaryUrl) {
-        console.log("Summary now available");
-        setSummaryUrl(urlResponse.summaryUrl);
-        setProcessingStatus("completed");
-      }
-    } catch (error) {
-      console.error("Error refreshing content:", error);
-    }
-  };
+  }, [
+    paperId,
+    authenticated,
+    user,
+    navigate,
+    urlRefreshCount,
+    refreshContentUrls,
+    refreshContent,
+  ]);
 
   const handleGoToHome = () => {
     navigate("/");
@@ -167,7 +206,10 @@ const BookStand = () => {
             {/* PDF panel */}
             <div className="w-full md:w-1/2 bg-white bg-opacity-90 rounded-3xl shadow-xl overflow-hidden">
               <div className="h-full">
-                <SimplePdfReader pdfUrl={pdfUrl} />
+                <SimplePdfReader
+                  pdfUrl={pdfUrl}
+                  onUrlExpired={refreshContentUrls}
+                />
               </div>
             </div>
 
@@ -204,6 +246,12 @@ const BookStand = () => {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="w-full mt-auto pt-5 text-center text-white">
+        <p className="text-sm opacity-80">
+          Please be aware that SummarAIze can make mistakes.
+        </p>
       </div>
     </div>
   );
