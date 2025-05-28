@@ -67,7 +67,6 @@
   "status": "string",
   "thumbnailUrl": "string",
   "s3Key": "string",
-  "starred": boolean
 }
 ```
 
