@@ -272,24 +272,23 @@ const uploadToS3 = async (file, uploadUrl, formFields) => {
   }
 };
 
-// Library and paper functions
 const loadLibrary = async (
   userId,
   token,
-  page = 1,
   limit = 10,
   sortBy = "uploadDate",
-  order = "desc"
+  order = "desc",
+  lastEvaluatedKey = null // 새로 추가된 파라미터
 ) => {
   return apiRequest(
     "/api/library/load",
     "POST",
     {
       userId,
-      page,
       limit,
       sortBy,
       order,
+      lastEvaluatedKey, // 페이지네이션을 위한 키
     },
     token
   );

@@ -125,7 +125,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
       publicationYear: "Publication Year",
       abstract: "Abstract",
       introduction: "Introduction",
-      relatedWorks: "Related Works",
+      recommendedPapers: "Recommended Research Papers",
       methodology: "Methodology",
       results: "Results",
       discussion: "Discussion",
@@ -141,7 +141,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
       publicationYear: "출판 연도",
       abstract: "초록",
       introduction: "서론",
-      relatedWorks: "관련 연구",
+      recommendedPapers: "추천 연구 논문",
       methodology: "방법론",
       results: "결과",
       discussion: "논의",
@@ -157,7 +157,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
       publicationYear: "Año de publicación",
       abstract: "Resumen",
       introduction: "Introducción",
-      relatedWorks: "Trabajos Relacionados",
+      recommendedPapers: "Artículos de Investigación Recomendados",
       methodology: "Metodología",
       results: "Resultados",
       discussion: "Discusión",
@@ -173,7 +173,7 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
       publicationYear: "Année de publication",
       abstract: "Résumé",
       introduction: "Introduction",
-      relatedWorks: "Travaux Connexes",
+      recommendedPapers: "Articles de Recherche Recommandés",
       methodology: "Méthodologie",
       results: "Résultats",
       discussion: "Discussion",
@@ -209,11 +209,29 @@ const generateMarkdownFromStructured = (paperAnalysis, targetLanguage) => {
 
   addSection(titles.abstract, paperAnalysis.abstract);
   addSection(titles.introduction, paperAnalysis.introduction);
-  addSection(titles.relatedWorks, paperAnalysis.relatedWorks); // Added Related Works section
   addSection(titles.methodology, paperAnalysis.methodology);
   addSection(titles.results, paperAnalysis.results);
   addSection(titles.discussion, paperAnalysis.discussion);
   addSection(titles.conclusions, paperAnalysis.conclusions);
+
+  // Add recommended papers section with special formatting
+  if (
+    paperAnalysis.recommendedPapers &&
+    paperAnalysis.recommendedPapers.length > 0
+  ) {
+    markdown += `## ${titles.recommendedPapers}\n`;
+    paperAnalysis.recommendedPapers.forEach((paper, index) => {
+      markdown += `### ${index + 1}. ${paper.title}\n`;
+      markdown += `**Authors:** ${paper.authors}\n`;
+      if (paper.year) {
+        markdown += `**Year:** ${paper.year}\n`;
+      }
+      if (paper.venue) {
+        markdown += `**Published in:** ${paper.venue}\n`;
+      }
+      markdown += `**Why relevant:** ${paper.relevance}\n\n`;
+    });
+  }
 
   if (paperAnalysis.keyTerms && paperAnalysis.keyTerms.length > 0) {
     markdown += `## ${titles.keyTerms}\n`;
@@ -263,10 +281,21 @@ Provide your response in ${targetLanguage} language.
     {"point": "Key point from introduction", "page": 2},
     {"point": "Another key point from introduction", "page": 3}
   ],
-  "relatedWorks": [
-    {"point": "Key related work or research mentioned", "page": 4},
-    {"point": "Another related research finding", "page": 5},
-    {"point": "Comparison with existing approaches", "page": 6}
+  "recommendedPapers": [
+    {
+      "title": "Title of recommended research paper",
+      "authors": "Author names",
+      "year": 2022,
+      "venue": "Journal/Conference name",
+      "relevance": "Brief explanation of why this paper is relevant to the current research"
+    },
+    {
+      "title": "Another recommended paper title",
+      "authors": "Author names",
+      "year": 2021,
+      "venue": "Journal/Conference name", 
+      "relevance": "Brief explanation of relevance"
+    }
   ],
   "methodology": [
     {"point": "Key methodological approach", "page": 7},
@@ -297,14 +326,15 @@ Provide your response in ${targetLanguage} language.
 Paper text:
 ${text}
 
-For each section (abstract, introduction, relatedWorks, methodology, etc.), provide key points with their corresponding page numbers in ${targetLanguage} language. 
+For each section (abstract, introduction, methodology, etc.), provide key points with their corresponding page numbers in ${targetLanguage} language.
 
-For the "relatedWorks" section, focus on:
-- Previous research studies mentioned in the paper
-- Existing approaches or methods that are compared or referenced
-- Related work that the current research builds upon
-- Comparative analysis with other studies
-- Gap in literature that this research addresses
+For the "recommendedPapers" section, suggest 3-5 research papers that would be relevant for someone reading this paper. These should be:
+- Papers that explore similar topics or methodologies
+- Foundational papers in the same field
+- Recent advances in related areas
+- Papers that might provide additional context or alternative approaches
+
+The recommended papers should be realistic suggestions based on the research area and topics covered in the paper. Include the title, authors, publication year, venue (journal/conference), and a brief explanation of why each paper is relevant.
 
 If a section is not present in the paper, return an empty array for that section.
 
@@ -317,15 +347,15 @@ Your response must be a valid JSON object that follows the format above precisel
           messages: [
             {
               role: "system",
-              content: `You are a research paper analysis expert who provides responses in ${targetLanguage} language. Extract detailed, structured information from academic papers with accurate page references, paying special attention to related works and prior research mentioned in the paper. Always respond with valid JSON.`,
+              content: `You are a research paper analysis expert who provides responses in ${targetLanguage} language. Extract detailed, structured information from academic papers with accurate page references, and recommend relevant research papers that readers might find valuable for further study. Always respond with valid JSON.`,
             },
             {
               role: "user",
               content: prompt,
             },
           ],
-          temperature: 0.2,
-          max_tokens: 4000, // Increased token limit to accommodate related works section
+          temperature: 0.3, // Slightly higher temperature for more creative paper recommendations
+          max_tokens: 4000,
           response_format: { type: "json_object" },
         });
 
@@ -343,7 +373,6 @@ Your response must be a valid JSON object that follows the format above precisel
         const keyPoints = [
           ...(paperAnalysis.abstract || []),
           ...(paperAnalysis.introduction || []),
-          ...(paperAnalysis.relatedWorks || []), // Include related works in key points
           ...(paperAnalysis.methodology || []),
           ...(paperAnalysis.results || []),
           ...(paperAnalysis.discussion || []),
@@ -353,6 +382,7 @@ Your response must be a valid JSON object that follows the format above precisel
         const analysis = {
           title: paperAnalysis.title,
           keyPoints: keyPoints,
+          recommendations: paperAnalysis.recommendedPapers || [], // Include paper recommendations
           citation: paperAnalysis.citation || {
             apa: "",
             mla: "",
