@@ -3,43 +3,38 @@
 ## 1. Functional Requirements
 
 ### User Authentication and Management
-1) Users shall be able to create accounts and log in securely through Google OAuth.
-2) Users shall be able to view and manage their account settings.
-3) Users shall be able to log out of the application.
-4) Users shall be able to change user's profile image.
-5) Users shall be able to change account passwords.
+- Users shall be able to create accounts and log in securely through Google OAuth.
+- Users shall be able to view and manage their account settings.
+- Users shall be able to log out of the application.
+- Users shall be able to change user’s profile image.
+- Users shall be able to change account passwords.
 
 ### Document Upload and Processing
-6) Users shall be able to upload PDF files of research papers.
-7) Users shall be able to upload PDF files through drag and drop.
-8) Users shall be able to upload PDF files through the system file explorer.
-9) The system shall process and extract text content from uploaded PDFs.
-10) The system shall analyze the document structure to identify key sections.
+- Users shall be able to upload PDF files through drag and drop.
+- Users shall be able to upload PDF files through the system file explorer.
+- The system shall process and extract text content from uploaded PDFs.
+- The system shall analyze the document structure to identify key sections.
 
 ### AI-Powered Summarization
-11) The system shall generate concise summaries of uploaded research papers using OpenAI API.
-12) The system shall attempt to identify key information with page references when possible.
-13) The system shall support the user's preference language.
+- The system shall generate concise summaries of uploaded research papers using OpenAI API.
+- The system shall attempt to identify key information with page references when possible.
+- The system shall support the user’s preference language.
 
 ### Citation Management
-14) The system shall extract basic citation information from papers automatically if it assesses from PDF meta datas (title, authors, year, journal).
-15) The system shall generate citations in various common formats.
-16) Users shall be able to copy citations to the clipboard.
-17) Users shall be able to manually edit extracted citation information if needed.
+- The system shall extract basic citation information from papers automatically if it assesses from PDF meta datas(title, authors, year, journal).
+- The system shall generate citations in various common formats.
 
 ### Research Recommendation
-18) The system shall suggest related papers based on AI-powered matching systems.
-19) The system shall display a simple recommendation rationale.
+- The system shall suggest related papers based on AI-powered matching systems.
 
 ### Library Management
-20) Users shall be able to save summarized papers to their library.
-21) Users shall be able to search their library by title and author.
-22) The system shall display a simple list of previously processed papers.
+- Users shall be able to save summarized papers to their library.
+- The system shall display a simple list of previously processed papers.
 
 ### User Interface
-23) The interface shall be functional on desktop browsers.
-24) The interface shall display paper information and summary in a readable format.
-25) The interface shall have a consistent and user-friendly design.
+- The interface shall be functional on desktop browsers.
+- The interface shall display paper information and summary in a readable format.
+- The interface shall have a consistent and user-friendly design.
 
 ## 2. Non-functional Requirements
 
