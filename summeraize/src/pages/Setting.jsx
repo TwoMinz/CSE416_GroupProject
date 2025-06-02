@@ -8,7 +8,7 @@ import {
   uploadProfileImage,
   changeLanguage,
 } from "../services/auth";
-import defaultAvatar from "../assets/images/default-avatar.png"; // Add default avatar import
+import defaultAvatar from "../assets/images/default-avatar.png";
 
 // Language options for display
 const LANGUAGE_MAP = {
@@ -25,12 +25,14 @@ const Setting = () => {
 
   // State variables
   const [nickname, setNickname] = useState("");
+  const [originalNickname, setOriginalNickname] = useState(""); // Track original nickname
   const [language, setLanguage] = useState(1);
   const [email, setEmail] = useState("");
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isChangingLanguage, setIsChangingLanguage] = useState(false);
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false); // New loading state
 
   // Password change states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -46,11 +48,13 @@ const Setting = () => {
   useEffect(() => {
     if (authenticated && user) {
       console.log("User:", user);
-      setNickname(user.username || "Nickname");
+      const username = user.username || "Nickname";
+      setNickname(username);
+      setOriginalNickname(username); // Store original
       setLanguage(user.transLang || 1);
       setEmail(user.email || "");
 
-      // 프로필 이미지 URL 설정
+      // Set profile image URL
       if (user.profilePicture) {
         setProfileImageUrl(user.profilePicture);
       }
@@ -65,6 +69,7 @@ const Setting = () => {
   };
 
   const handleNicknameClick = () => {
+    console.log("Starting nickname edit mode");
     setIsEditingNickname(true);
   };
 
@@ -74,44 +79,82 @@ const Setting = () => {
 
   // Save nickname when finished editing
   const handleNicknameBlur = async () => {
+    console.log("Nickname blur triggered", {
+      nickname,
+      originalNickname,
+      isUpdatingUsername,
+    });
+
+    // Don't process if already updating or no change
+    if (isUpdatingUsername) {
+      return;
+    }
+
     setIsEditingNickname(false);
 
-    // Only update if changed and valid
-    if (
-      user &&
-      nickname &&
-      nickname !== user.username &&
-      nickname.trim().length > 0
-    ) {
-      try {
-        const result = await changeUsername(user.userId, nickname);
-        if (result.success) {
-          openPopup("Success", "Username has been updated successfully!");
-          // Update user context
-          if (updateUser) {
-            updateUser(result.user);
-          }
-        } else {
-          openPopup("Error", result.message || "Failed to update username");
-          // Revert to original username
-          setNickname(user.username);
-        }
-      } catch (error) {
-        console.error("Error updating username:", error);
-        openPopup("Error", "An error occurred while updating your username");
-        // Revert to original username
-        setNickname(user.username);
-      }
-    } else if (nickname.trim().length === 0) {
-      // Revert if empty
-      setNickname(user.username);
+    // Check if nickname actually changed and is valid
+    const trimmedNickname = nickname.trim();
+
+    if (trimmedNickname === originalNickname) {
+      console.log("No change in nickname, skipping update");
+      return;
+    }
+
+    if (!trimmedNickname || trimmedNickname.length === 0) {
+      console.log("Empty nickname, reverting to original");
+      setNickname(originalNickname);
       openPopup("Error", "Username cannot be empty");
+      return;
+    }
+
+    if (!user?.userId) {
+      console.error("No user ID available");
+      setNickname(originalNickname);
+      openPopup("Error", "User information not available");
+      return;
+    }
+
+    console.log(
+      `Attempting to update username from "${originalNickname}" to "${trimmedNickname}"`
+    );
+    setIsUpdatingUsername(true);
+
+    try {
+      const result = await changeUsername(user.userId, trimmedNickname);
+
+      if (result.success) {
+        console.log("Username update successful:", result.user);
+        setOriginalNickname(trimmedNickname); // Update the original nickname
+        openPopup("Success", "Username has been updated successfully!");
+
+        // Update user context
+        if (updateUser) {
+          updateUser(result.user);
+        }
+      } else {
+        console.error("Username update failed:", result.message);
+        openPopup("Error", result.message || "Failed to update username");
+        // Revert to original username
+        setNickname(originalNickname);
+      }
+    } catch (error) {
+      console.error("Error updating username:", error);
+      openPopup("Error", "An error occurred while updating your username");
+      // Revert to original username
+      setNickname(originalNickname);
+    } finally {
+      setIsUpdatingUsername(false);
     }
   };
 
   const handleNicknameKeyDown = (e) => {
     if (e.key === "Enter") {
+      e.preventDefault();
       handleNicknameBlur();
+    } else if (e.key === "Escape") {
+      // Cancel editing and revert
+      setNickname(originalNickname);
+      setIsEditingNickname(false);
     }
   };
 
@@ -214,9 +257,8 @@ const Setting = () => {
     }
   };
 
-  // Profile picture functions kept but not connected to UI
+  // Profile picture functions
   const handlePictureButtonClick = () => {
-    // Disabled - the function exists but is not called from UI
     fileInputRef.current.click();
   };
 
@@ -245,7 +287,6 @@ const Setting = () => {
 
       console.log("Starting profile image upload...");
 
-      // uploadProfileImage가 Cloudinary 업로드 + 백엔드 URL 업데이트를 모두 처리
       const result = await uploadProfileImage(selectedFile);
 
       setUploadProgress(80);
@@ -292,7 +333,7 @@ const Setting = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-100 to-blue-500">
-      {/* Hidden file input - kept but not used */}
+      {/* Hidden file input */}
       <input
         type="file"
         ref={fileInputRef}
@@ -305,7 +346,7 @@ const Setting = () => {
       <div className="flex-1 flex justify-center items-center p-4">
         <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
           <div className="p-8 flex flex-col items-center">
-            {/* Profile Photo - now always showing default icon */}
+            {/* Profile Photo */}
             <div className="relative mb-6">
               <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                 <img
@@ -314,7 +355,6 @@ const Setting = () => {
                   className="w-full h-full object-cover"
                   style={{ objectPosition: "center" }}
                   onError={() => {
-                    // 이미지 로드 실패 시 기본 이미지로 대체
                     console.log("Failed to load profile image, using default");
                     setProfileImageUrl("");
                   }}
@@ -365,19 +405,30 @@ const Setting = () => {
                     onChange={handleNicknameChange}
                     onBlur={handleNicknameBlur}
                     onKeyDown={handleNicknameKeyDown}
-                    className="border-b border-blue-500 outline-none text-blue-500"
+                    className="border-b border-blue-500 outline-none text-blue-500 bg-transparent text-center"
                     autoFocus
+                    disabled={isUpdatingUsername}
+                    placeholder="Enter username"
                   />
                 ) : (
                   <span
-                    className="text-blue-500 cursor-pointer"
-                    onClick={handleNicknameClick}
+                    className={`text-blue-500 cursor-pointer hover:text-blue-600 ${
+                      isUpdatingUsername ? "opacity-50" : ""
+                    }`}
+                    onClick={
+                      isUpdatingUsername ? undefined : handleNicknameClick
+                    }
                   >
-                    {nickname}
+                    {isUpdatingUsername ? "Updating..." : nickname}
                   </span>
                 )}
                 !
               </h2>
+              {isEditingNickname && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Press Enter to save, Escape to cancel
+                </p>
+              )}
             </div>
 
             {/* Settings Fields */}

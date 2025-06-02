@@ -280,7 +280,16 @@ const loadLibrary = async (
   order = "desc",
   lastEvaluatedKey = null // 새로 추가된 파라미터
 ) => {
-  return apiRequest(
+  console.log("[API] loadLibrary called with:", {
+    userId,
+    limit,
+    sortBy,
+    order,
+    lastEvaluatedKey,
+    lastKeyType: typeof lastEvaluatedKey,
+  });
+
+  const response = await apiRequest(
     "/api/library/load",
     "POST",
     {
@@ -292,6 +301,14 @@ const loadLibrary = async (
     },
     token
   );
+
+  console.log("[API] loadLibrary response:", {
+    success: response.success,
+    papersCount: response.papers?.length,
+    pagination: response.pagination,
+  });
+
+  return response;
 };
 
 const getPaperDetail = async (paperId, token) => {

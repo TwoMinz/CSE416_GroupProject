@@ -50,7 +50,7 @@ const getPresignedUrl = (s3Key) => {
   return url;
 };
 
-// failed 상태가 아닌 논문들을 페이지네이션으로 가져오는 함수
+// 개선된 페이지네이션 함수
 const getUserPapersWithPagination = async (
   userId,
   limit,
@@ -58,16 +58,16 @@ const getUserPapersWithPagination = async (
   sortBy = "uploadDate",
   order = "desc"
 ) => {
-  let papers = [];
+  console.log(`[LOAD-LIBRARY] Starting pagination query for user: ${userId}`);
+  console.log(
+    `[LOAD-LIBRARY] Limit: ${limit}, lastEvaluatedKey:`,
+    lastEvaluatedKey
+  );
+
   let currentLastEvaluatedKey = lastEvaluatedKey;
-  let queryCount = 0;
-  const maxQueries = 5; // 무한 루프 방지
 
-  console.log(`[LOAD-LIBRARY] Fetching ${limit} papers for user: ${userId}`);
-  console.log(`[LOAD-LIBRARY] Starting from key:`, lastEvaluatedKey);
-
-  // lastEvaluatedKey 검증 및 파싱
-  if (typeof lastEvaluatedKey === "string") {
+  // lastEvaluatedKey 파싱 및 검증
+  if (typeof lastEvaluatedKey === "string" && lastEvaluatedKey.trim() !== "") {
     try {
       currentLastEvaluatedKey = JSON.parse(lastEvaluatedKey);
       console.log(
@@ -82,138 +82,110 @@ const getUserPapersWithPagination = async (
 
   // lastEvaluatedKey 구조 검증
   if (currentLastEvaluatedKey) {
-    // GSI UserIdIndex를 사용하므로 userId와 원본 테이블의 기본 키(id)가 필요
     if (!currentLastEvaluatedKey.userId || !currentLastEvaluatedKey.id) {
       console.warn(
         `[LOAD-LIBRARY] Invalid lastEvaluatedKey structure, resetting to null`
-      );
-      console.log(
-        `[LOAD-LIBRARY] Expected: {userId: string, id: number}, Got:`,
-        currentLastEvaluatedKey
       );
       currentLastEvaluatedKey = null;
     }
   }
 
-  while (papers.length < limit && queryCount < maxQueries) {
-    queryCount++;
+  const queryParams = {
+    TableName: process.env.PAPERS_TABLE,
+    IndexName: "UserIdIndex",
+    KeyConditionExpression: "userId = :userId",
+    // 필터 완전 제거 - 모든 상태의 논문을 프론트엔드로 전송
+    ExpressionAttributeValues: {
+      ":userId": userId,
+    },
+    Limit: limit,
+    ScanIndexForward: order === "asc",
+  };
 
-    const queryParams = {
-      TableName: process.env.PAPERS_TABLE,
-      IndexName: "UserIdIndex",
-      KeyConditionExpression: "userId = :userId",
-      // DynamoDB에서 failed 상태 제외
-      FilterExpression: "#status <> :failedStatus",
-      ExpressionAttributeValues: {
-        ":userId": userId,
-        ":failedStatus": "failed",
-      },
-      ExpressionAttributeNames: {
-        "#status": "status",
-      },
-      Limit: limit * 3, // failed를 고려해서 더 많이 가져오기 (2배 -> 3배로 증가)
-      // ScanIndexForward 제거 - JavaScript에서 정렬할 예정
-    };
-
-    if (currentLastEvaluatedKey) {
-      queryParams.ExclusiveStartKey = currentLastEvaluatedKey;
-    }
-
-    console.log(`[LOAD-LIBRARY] Query ${queryCount} params:`, {
-      ...queryParams,
-      ExclusiveStartKey: queryParams.ExclusiveStartKey ? "SET" : "NULL",
-    });
-
-    try {
-      const result = await documentClient.query(queryParams).promise();
-
-      console.log(
-        `[LOAD-LIBRARY] Query ${queryCount} returned ${
-          result.Items?.length || 0
-        } items`
-      );
-      console.log(
-        `[LOAD-LIBRARY] LastEvaluatedKey:`,
-        result.LastEvaluatedKey ? "EXISTS" : "NULL"
-      );
-
-      if (result.Items && result.Items.length > 0) {
-        // 중복 제거: 이미 가져온 논문 ID와 비교
-        const existingIds = new Set(papers.map((p) => p.id));
-        const newItems = result.Items.filter(
-          (item) => !existingIds.has(item.id)
-        );
-
-        console.log(
-          `[LOAD-LIBRARY] Query ${queryCount} returned ${result.Items.length} items, ${newItems.length} are new`
-        );
-        papers.push(...newItems);
-      } else {
-        console.log(`[LOAD-LIBRARY] Query ${queryCount} returned no items`);
-      }
-
-      currentLastEvaluatedKey = result.LastEvaluatedKey;
-
-      // 더 이상 데이터가 없으면 중단
-      if (!currentLastEvaluatedKey) {
-        break;
-      }
-    } catch (error) {
-      console.error(`[LOAD-LIBRARY] Error in query ${queryCount}:`, error);
-
-      // ValidationException인 경우 키를 null로 재설정하고 다시 시도
-      if (error.code === "ValidationException" && queryCount === 1) {
-        console.log(
-          `[LOAD-LIBRARY] ValidationException on first query, retrying without ExclusiveStartKey`
-        );
-        currentLastEvaluatedKey = null;
-        continue;
-      }
-
-      break;
-    }
+  if (currentLastEvaluatedKey) {
+    queryParams.ExclusiveStartKey = currentLastEvaluatedKey;
+    console.log(
+      `[LOAD-LIBRARY] Using ExclusiveStartKey:`,
+      currentLastEvaluatedKey
+    );
   }
 
-  // 간단하고 확실한 정렬 - uploadDate 기준 최신순
-  papers.sort((a, b) => {
-    const dateA = new Date(a.uploadDate || 0);
-    const dateB = new Date(b.uploadDate || 0);
-
-    // 최신 날짜가 먼저 오도록 (내림차순)
-    return dateB.getTime() - dateA.getTime();
+  console.log(`[LOAD-LIBRARY] Query params (no filtering):`, {
+    TableName: queryParams.TableName,
+    IndexName: queryParams.IndexName,
+    KeyConditionExpression: queryParams.KeyConditionExpression,
+    Limit: queryParams.Limit,
+    ScanIndexForward: queryParams.ScanIndexForward,
+    ExclusiveStartKey: queryParams.ExclusiveStartKey ? "SET" : "NULL",
   });
 
-  console.log(
-    `[LOAD-LIBRARY] Sorted ${papers.length} papers by uploadDate (newest first)`
-  );
-  if (papers.length > 0) {
+  try {
+    const result = await documentClient.query(queryParams).promise();
+
     console.log(
-      `[LOAD-LIBRARY] Newest paper: ${papers[0].title} - ${papers[0].uploadDate}`
+      `[LOAD-LIBRARY] Query returned ${result.Items?.length || 0} items`
     );
-    if (papers.length > 1) {
-      console.log(
-        `[LOAD-LIBRARY] Second paper: ${papers[1].title} - ${papers[1].uploadDate}`
-      );
-    }
+    console.log(
+      `[LOAD-LIBRARY] LastEvaluatedKey from DynamoDB:`,
+      result.LastEvaluatedKey
+    );
+
+    let papers = result.Items || [];
+
+    // 쿼리 결과의 각 논문 상태를 자세히 로깅
+    console.log(
+      `[LOAD-LIBRARY] Raw papers from DynamoDB:`,
+      papers.map((p) => ({
+        id: p.id,
+        title: p.title?.substring(0, 30) + "...",
+        status: p.status,
+        uploadDate: p.uploadDate,
+      }))
+    );
+
+    // 날짜순 정렬 (uploadDate 기준)
+    papers.sort((a, b) => {
+      const dateA = new Date(a.uploadDate || 0);
+      const dateB = new Date(b.uploadDate || 0);
+      return order === "desc"
+        ? dateB.getTime() - dateA.getTime()
+        : dateA.getTime() - dateB.getTime();
+    });
+
+    console.log(`[LOAD-LIBRARY] Sorted ${papers.length} papers`);
+
+    // 상태별 논문 수 로깅
+    const statusCounts = papers.reduce((acc, paper) => {
+      const status = paper.status || "unknown";
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+    console.log(`[LOAD-LIBRARY] Papers by status:`, statusCounts);
+
+    // 결과 반환
+    const resultData = {
+      papers: papers,
+      lastEvaluatedKey: result.LastEvaluatedKey || null,
+      hasMore: !!result.LastEvaluatedKey,
+    };
+
+    console.log(`[LOAD-LIBRARY] Returning result:`, {
+      papersCount: resultData.papers.length,
+      hasMore: resultData.hasMore,
+      lastEvaluatedKey: resultData.lastEvaluatedKey ? "EXISTS" : "NULL",
+    });
+
+    return resultData;
+  } catch (error) {
+    console.error(`[LOAD-LIBRARY] Error in DynamoDB query:`, error);
+    throw error;
   }
-
-  // 정확히 limit 개수만큼 자르기
-  const limitedPapers = papers.slice(0, limit);
-
-  console.log(
-    `[LOAD-LIBRARY] Returning ${limitedPapers.length} papers after filtering`
-  );
-
-  return {
-    papers: limitedPapers,
-    lastEvaluatedKey: currentLastEvaluatedKey,
-    hasMore: currentLastEvaluatedKey !== null || papers.length > limit,
-  };
 };
 
 module.exports.handler = async (event) => {
   try {
     console.log("[LOAD-LIBRARY] Processing library load request");
+    console.log("[LOAD-LIBRARY] Event body:", event.body);
 
     // Parse request body
     const {
@@ -221,8 +193,16 @@ module.exports.handler = async (event) => {
       limit = 10,
       sortBy = "uploadDate",
       order = "desc",
-      lastEvaluatedKey = null, // 프론트에서 다음 페이지 로드할 때 전달
+      lastEvaluatedKey = null,
     } = JSON.parse(event.body);
+
+    console.log("[LOAD-LIBRARY] Parsed request:", {
+      userId,
+      limit,
+      sortBy,
+      order,
+      lastEvaluatedKey: lastEvaluatedKey ? "PROVIDED" : "NULL",
+    });
 
     // Extract authorization token
     const authHeader =
@@ -278,7 +258,7 @@ module.exports.handler = async (event) => {
 
     const userIdString = String(userId);
 
-    // 개선된 페이지네이션으로 논문 가져오기
+    // 페이지네이션으로 논문 가져오기
     const result = await getUserPapersWithPagination(
       userIdString,
       limit,
@@ -308,6 +288,32 @@ module.exports.handler = async (event) => {
       };
     });
 
+    // 페이지네이션 정보 준비
+    const paginationInfo = {
+      hasMore: result.hasMore,
+      lastEvaluatedKey: result.lastEvaluatedKey
+        ? JSON.stringify(result.lastEvaluatedKey)
+        : null,
+      currentCount: formattedPapers.length,
+      requestedLimit: limit,
+    };
+
+    console.log("[LOAD-LIBRARY] Final response:", {
+      success: true,
+      papersCount: formattedPapers.length,
+      pagination: paginationInfo,
+      papersByStatus: formattedPapers.reduce((acc, paper) => {
+        const status = paper.status || "unknown";
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {}),
+      samplePapers: formattedPapers.slice(0, 3).map((p) => ({
+        id: p.id,
+        title: p.title?.substring(0, 30) + "...",
+        status: p.status,
+      })),
+    });
+
     return {
       statusCode: 200,
       headers: {
@@ -317,14 +323,7 @@ module.exports.handler = async (event) => {
       body: JSON.stringify({
         success: true,
         papers: formattedPapers,
-        pagination: {
-          hasMore: result.hasMore,
-          lastEvaluatedKey: result.lastEvaluatedKey
-            ? JSON.stringify(result.lastEvaluatedKey)
-            : null, // JSON 문자열로 직렬화
-          currentCount: formattedPapers.length,
-          requestedLimit: limit,
-        },
+        pagination: paginationInfo,
       }),
     };
   } catch (error) {

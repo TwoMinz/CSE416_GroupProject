@@ -10,8 +10,13 @@ const Library = () => {
   const { user, authenticated, logout } = useAuth();
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [pagination, setPagination] = useState({
+    hasMore: false,
+    lastEvaluatedKey: null,
+  });
 
   const handleClickWebLogo = () => {
     navigate("/");
@@ -19,14 +24,17 @@ const Library = () => {
 
   // Fetch papers from the library API
   const fetchPapers = useCallback(
-    async (showLoader = true) => {
+    async (showLoader = true, isLoadMore = false, resetPagination = false) => {
       if (!authenticated || !user) {
         navigate("/login");
         return;
       }
 
-      if (showLoader) {
+      // Set loading states
+      if (showLoader && !isLoadMore) {
         setLoading(true);
+      } else if (isLoadMore) {
+        setLoadingMore(true);
       } else {
         setRefreshing(true);
       }
@@ -34,10 +42,73 @@ const Library = () => {
 
       try {
         const token = localStorage.getItem("summaraize-token");
-        const response = await loadLibrary(user.userId, token);
+
+        // Determine which lastEvaluatedKey to use
+        let lastKey = null;
+        if (isLoadMore && !resetPagination) {
+          lastKey = pagination.lastEvaluatedKey;
+        }
+
+        console.log(
+          `[LIBRARY] Fetching papers - isLoadMore: ${isLoadMore}, lastKey:`,
+          lastKey
+        );
+
+        const response = await loadLibrary(
+          user.userId,
+          token,
+          10, // limit
+          "uploadDate", // sortBy
+          "desc", // order
+          lastKey // lastEvaluatedKey for pagination
+        );
+
+        console.log("[LIBRARY] API Response:", response);
+        console.log("[LIBRARY] Response pagination:", response.pagination);
 
         if (response.success) {
-          setPapers(response.papers || []);
+          const newPapers = response.papers || [];
+          console.log(`[LIBRARY] Received ${newPapers.length} papers`);
+
+          if (isLoadMore && !resetPagination) {
+            // Append new papers to existing ones
+            setPapers((prevPapers) => {
+              console.log(
+                `[LIBRARY] Appending ${newPapers.length} papers to existing ${prevPapers.length}`
+              );
+              // Remove duplicates based on paper ID
+              const existingIds = new Set(prevPapers.map((p) => p.id));
+              const uniqueNewPapers = newPapers.filter(
+                (p) => !existingIds.has(p.id)
+              );
+              console.log(
+                `[LIBRARY] Adding ${uniqueNewPapers.length} unique papers`
+              );
+              return [...prevPapers, ...uniqueNewPapers];
+            });
+          } else {
+            // Replace papers for initial load or refresh
+            console.log(
+              `[LIBRARY] Replacing papers with ${newPapers.length} new papers`
+            );
+            setPapers(newPapers);
+          }
+
+          // Update pagination info
+          const newPaginationState = {
+            hasMore: response.pagination?.hasMore || false,
+            lastEvaluatedKey: response.pagination?.lastEvaluatedKey || null,
+          };
+          console.log("[LIBRARY] Raw pagination from API:", {
+            hasMore: response.pagination?.hasMore,
+            lastEvaluatedKey: response.pagination?.lastEvaluatedKey,
+            lastKeyType: typeof response.pagination?.lastEvaluatedKey,
+          });
+          console.log(
+            "[LIBRARY] Setting pagination state:",
+            newPaginationState
+          );
+          setPagination(newPaginationState);
         } else {
           setError(response.message || "Failed to load library");
         }
@@ -46,15 +117,20 @@ const Library = () => {
         setError("Error loading library. Please try again.");
       } finally {
         setLoading(false);
+        setLoadingMore(false);
         setRefreshing(false);
       }
     },
-    [authenticated, user, navigate]
+    [authenticated, user, navigate, pagination.lastEvaluatedKey]
   );
 
+  // Initial load - only run when user/auth changes
   useEffect(() => {
-    fetchPapers();
-  }, [fetchPapers]);
+    if (authenticated && user) {
+      console.log("[LIBRARY] Initial load triggered");
+      fetchPapers(true, false, true); // showLoader, isLoadMore, resetPagination
+    }
+  }, [authenticated, user?.userId]); // Only depend on auth and userId
 
   // Auto-refresh every 30 seconds if there are processing papers
   useEffect(() => {
@@ -62,20 +138,67 @@ const Library = () => {
       (paper) => paper.status === "processing"
     );
 
-    if (hasProcessingPapers) {
+    if (hasProcessingPapers && authenticated && user) {
+      console.log("[LIBRARY] Setting up auto-refresh for processing papers");
       const interval = setInterval(() => {
-        fetchPapers(false); // Don't show loader for auto-refresh
+        console.log("[LIBRARY] Auto-refreshing...");
+        fetchPapers(false, false, true); // Don't show loader, not load more, reset pagination
       }, 30000); // 30 seconds
 
-      return () => clearInterval(interval);
+      return () => {
+        console.log("[LIBRARY] Cleaning up auto-refresh interval");
+        clearInterval(interval);
+      };
     }
-  }, [papers, fetchPapers]);
+  }, [papers, authenticated, user, fetchPapers]);
 
-  // 표시할 논문들 필터링 - 기본적으로 실패한 논문은 숨김
+  // Load more papers function
+  const handleLoadMore = useCallback(() => {
+    console.log("[LIBRARY] Load More clicked", {
+      loadingMore,
+      hasMore: pagination.hasMore,
+      lastKey: pagination.lastEvaluatedKey,
+      lastKeyType: typeof pagination.lastEvaluatedKey,
+    });
+
+    // 조건을 더 유연하게 변경 - lastEvaluatedKey가 null이어도 hasMore가 true면 시도
+    if (!loadingMore && pagination.hasMore) {
+      console.log("[LIBRARY] Conditions met, calling fetchPapers");
+      fetchPapers(false, true, false); // showLoader = false, isLoadMore = true, resetPagination = false
+    } else {
+      console.log("[LIBRARY] Conditions not met:", {
+        loadingMoreBlocked: loadingMore,
+        hasMoreBlocked: !pagination.hasMore,
+      });
+    }
+  }, [
+    loadingMore,
+    pagination.hasMore,
+    pagination.lastEvaluatedKey,
+    fetchPapers,
+  ]);
+
+  // 표시할 논문들 필터링 - processing 포함, failed만 제외
   const getDisplayedPapers = () => {
     if (!papers) return [];
 
-    return papers.filter((paper) => paper.status !== "failed"); // 실패한 논문 제외
+    // 모든 상태 표시 (failed만 제외)
+    const displayed = papers.filter((paper) => {
+      const status = paper.status || "unknown";
+      return status !== "failed";
+    });
+
+    console.log("[LIBRARY] Displayed papers by status:", {
+      total: papers.length,
+      displayed: displayed.length,
+      byStatus: papers.reduce((acc, paper) => {
+        const status = paper.status || "unknown";
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {}),
+    });
+
+    return displayed;
   };
 
   // 논문 통계 계산
@@ -130,9 +253,15 @@ const Library = () => {
   };
 
   // Manual refresh function
-  const handleRefresh = () => {
-    fetchPapers(false);
-  };
+  const handleRefresh = useCallback(() => {
+    console.log("[LIBRARY] Manual refresh triggered");
+    // Reset pagination for fresh load
+    setPagination({
+      hasMore: false,
+      lastEvaluatedKey: null,
+    });
+    fetchPapers(false, false, true); // showLoader = false, isLoadMore = false, resetPagination = true
+  }, [fetchPapers]);
 
   // Status badge component
   const StatusBadge = ({ status }) => {
@@ -192,6 +321,16 @@ const Library = () => {
       </span>
     );
   };
+
+  // Debug pagination state
+  console.log("[LIBRARY] Current state:", {
+    papersCount: papers.length,
+    displayedCount: displayedPapers.length,
+    hasMore: pagination.hasMore,
+    lastKey: pagination.lastEvaluatedKey ? "EXISTS" : "NULL",
+    loading,
+    loadingMore,
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-500 flex flex-col">
@@ -305,6 +444,9 @@ const Library = () => {
                     {stats.processing} Processing
                   </span>
                 )}
+                <span className="bg-gray-100 px-3 py-1 rounded-full">
+                  {displayedPapers.length} Total Displayed
+                </span>
               </div>
             )}
           </div>
@@ -361,46 +503,101 @@ const Library = () => {
 
           {/* Library grid */}
           {!loading && !error && displayedPapers.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {displayedPapers.map((paper) => (
-                <div className="flex justify-center relative" key={paper.id}>
-                  {paper.status !== "completed" && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <StatusBadge status={paper.status} />
-                    </div>
-                  )}
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {displayedPapers.map((paper) => (
+                  <div className="flex justify-center relative" key={paper.id}>
+                    {paper.status !== "completed" && (
+                      <div className="absolute top-2 left-2 z-10">
+                        <StatusBadge status={paper.status} />
+                      </div>
+                    )}
 
-                  <PaperCard
-                    key={paper.id}
-                    paper={{
-                      id: paper.id,
-                      title: paper.title,
-                      date: new Date(paper.uploadDate).toLocaleDateString(
-                        "en-US",
-                        {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        }
-                      ),
-                      time: new Date(paper.uploadDate).toLocaleTimeString(
-                        "en-US",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }
-                      ),
-                      starred: paper.starred || false,
-                      status: paper.status,
-                    }}
-                    onToggleStar={() =>
-                      handleToggleStar(paper.id, !paper.starred)
-                    }
-                    onClick={() => handlePaperClick(paper.id)}
-                  />
+                    <PaperCard
+                      key={paper.id}
+                      paper={{
+                        id: paper.id,
+                        title: paper.title,
+                        date: new Date(paper.uploadDate).toLocaleDateString(
+                          "en-US",
+                          {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          }
+                        ),
+                        time: new Date(paper.uploadDate).toLocaleTimeString(
+                          "en-US",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        ),
+                        starred: paper.starred || false,
+                        status: paper.status,
+                      }}
+                      onToggleStar={() =>
+                        handleToggleStar(paper.id, !paper.starred)
+                      }
+                      onClick={() => handlePaperClick(paper.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Load More Button */}
+              {pagination.hasMore && (
+                <div className="flex justify-center mt-8">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Loading More...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                          />
+                        </svg>
+                        Load More Papers
+                      </>
+                    )}
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
 
           {/* Processing papers notice */}
