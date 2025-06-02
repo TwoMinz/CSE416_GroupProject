@@ -50,7 +50,6 @@ const getPresignedUrl = (s3Key) => {
   return url;
 };
 
-// 개선된 페이지네이션 함수
 const getUserPapersWithPagination = async (
   userId,
   limit,
@@ -58,126 +57,88 @@ const getUserPapersWithPagination = async (
   sortBy = "uploadDate",
   order = "desc"
 ) => {
-  console.log(`[LOAD-LIBRARY] Starting pagination query for user: ${userId}`);
-  console.log(
-    `[LOAD-LIBRARY] Limit: ${limit}, lastEvaluatedKey:`,
-    lastEvaluatedKey
-  );
-
-  let currentLastEvaluatedKey = lastEvaluatedKey;
-
-  // lastEvaluatedKey 파싱 및 검증
-  if (typeof lastEvaluatedKey === "string" && lastEvaluatedKey.trim() !== "") {
-    try {
-      currentLastEvaluatedKey = JSON.parse(lastEvaluatedKey);
-      console.log(
-        `[LOAD-LIBRARY] Parsed lastEvaluatedKey:`,
-        currentLastEvaluatedKey
-      );
-    } catch (error) {
-      console.error(`[LOAD-LIBRARY] Failed to parse lastEvaluatedKey:`, error);
-      currentLastEvaluatedKey = null;
-    }
-  }
-
-  // lastEvaluatedKey 구조 검증
-  if (currentLastEvaluatedKey) {
-    if (!currentLastEvaluatedKey.userId || !currentLastEvaluatedKey.id) {
-      console.warn(
-        `[LOAD-LIBRARY] Invalid lastEvaluatedKey structure, resetting to null`
-      );
-      currentLastEvaluatedKey = null;
-    }
-  }
-
-  const queryParams = {
-    TableName: process.env.PAPERS_TABLE,
-    IndexName: "UserIdIndex",
-    KeyConditionExpression: "userId = :userId",
-    // 필터 완전 제거 - 모든 상태의 논문을 프론트엔드로 전송
-    ExpressionAttributeValues: {
-      ":userId": userId,
-    },
-    Limit: limit,
-    ScanIndexForward: order === "asc",
-  };
-
-  if (currentLastEvaluatedKey) {
-    queryParams.ExclusiveStartKey = currentLastEvaluatedKey;
-    console.log(
-      `[LOAD-LIBRARY] Using ExclusiveStartKey:`,
-      currentLastEvaluatedKey
-    );
-  }
-
-  console.log(`[LOAD-LIBRARY] Query params (no filtering):`, {
-    TableName: queryParams.TableName,
-    IndexName: queryParams.IndexName,
-    KeyConditionExpression: queryParams.KeyConditionExpression,
-    Limit: queryParams.Limit,
-    ScanIndexForward: queryParams.ScanIndexForward,
-    ExclusiveStartKey: queryParams.ExclusiveStartKey ? "SET" : "NULL",
-  });
+  console.log(`[LOAD-LIBRARY] Starting query for user: ${userId}`);
 
   try {
-    const result = await documentClient.query(queryParams).promise();
+    // 일단 모든 사용자 논문을 가져오기 (페이지네이션 없이)
+    const allPapersResult = await documentClient
+      .query({
+        TableName: process.env.PAPERS_TABLE,
+        IndexName: "UserIdIndex",
+        KeyConditionExpression: "userId = :userId",
+        ExpressionAttributeValues: {
+          ":userId": userId,
+        },
+      })
+      .promise();
 
-    console.log(
-      `[LOAD-LIBRARY] Query returned ${result.Items?.length || 0} items`
-    );
-    console.log(
-      `[LOAD-LIBRARY] LastEvaluatedKey from DynamoDB:`,
-      result.LastEvaluatedKey
-    );
+    let allPapers = allPapersResult.Items || [];
 
-    let papers = result.Items || [];
+    console.log(`[LOAD-LIBRARY] Total papers found: ${allPapers.length}`);
 
-    // 쿼리 결과의 각 논문 상태를 자세히 로깅
-    console.log(
-      `[LOAD-LIBRARY] Raw papers from DynamoDB:`,
-      papers.map((p) => ({
-        id: p.id,
-        title: p.title?.substring(0, 30) + "...",
-        status: p.status,
-        uploadDate: p.uploadDate,
-      }))
-    );
+    // 각 논문의 업로드 날짜 로깅
+    allPapers.forEach((paper, index) => {
+      console.log(
+        `[LOAD-LIBRARY] Paper ${index}: ${paper.title?.substring(0, 30)}... - ${
+          paper.uploadDate
+        } - Status: ${paper.status}`
+      );
+    });
 
-    // 날짜순 정렬 (uploadDate 기준)
-    papers.sort((a, b) => {
+    // 확실한 정렬
+    allPapers.sort((a, b) => {
       const dateA = new Date(a.uploadDate || 0);
       const dateB = new Date(b.uploadDate || 0);
-      return order === "desc"
-        ? dateB.getTime() - dateA.getTime()
-        : dateA.getTime() - dateB.getTime();
+
+      if (order === "desc") {
+        return dateB.getTime() - dateA.getTime(); // 최신순
+      } else {
+        return dateA.getTime() - dateB.getTime(); // 오래된순
+      }
     });
 
-    console.log(`[LOAD-LIBRARY] Sorted ${papers.length} papers`);
+    console.log(`[LOAD-LIBRARY] After sorting:`);
+    allPapers.slice(0, 5).forEach((paper, index) => {
+      console.log(
+        `[LOAD-LIBRARY] Sorted Paper ${index}: ${paper.title?.substring(
+          0,
+          30
+        )}... - ${paper.uploadDate}`
+      );
+    });
 
-    // 상태별 논문 수 로깅
-    const statusCounts = papers.reduce((acc, paper) => {
-      const status = paper.status || "unknown";
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {});
-    console.log(`[LOAD-LIBRARY] Papers by status:`, statusCounts);
+    // 간단한 offset 기반 페이지네이션
+    let offset = 0;
+    if (lastEvaluatedKey && typeof lastEvaluatedKey === "string") {
+      try {
+        const parsed = JSON.parse(lastEvaluatedKey);
+        offset = parsed.offset || 0;
+      } catch (e) {
+        console.log(`[LOAD-LIBRARY] Invalid lastEvaluatedKey, starting from 0`);
+        offset = 0;
+      }
+    }
 
-    // 결과 반환
-    const resultData = {
-      papers: papers,
-      lastEvaluatedKey: result.LastEvaluatedKey || null,
-      hasMore: !!result.LastEvaluatedKey,
+    console.log(`[LOAD-LIBRARY] Using offset: ${offset}, limit: ${limit}`);
+
+    const paginatedPapers = allPapers.slice(offset, offset + limit);
+    const hasMore = offset + limit < allPapers.length;
+    const nextOffset = offset + limit;
+
+    console.log(
+      `[LOAD-LIBRARY] Returning ${paginatedPapers.length} papers, hasMore: ${hasMore}`
+    );
+
+    return {
+      papers: paginatedPapers,
+      lastEvaluatedKey: hasMore ? { offset: nextOffset } : null,
+      hasMore: hasMore,
     };
-
-    console.log(`[LOAD-LIBRARY] Returning result:`, {
-      papersCount: resultData.papers.length,
-      hasMore: resultData.hasMore,
-      lastEvaluatedKey: resultData.lastEvaluatedKey ? "EXISTS" : "NULL",
-    });
-
-    return resultData;
   } catch (error) {
-    console.error(`[LOAD-LIBRARY] Error in DynamoDB query:`, error);
+    console.error(
+      `[LOAD-LIBRARY] Error in getUserPapersWithPagination:`,
+      error
+    );
     throw error;
   }
 };
