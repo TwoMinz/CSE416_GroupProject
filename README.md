@@ -165,14 +165,14 @@ formatting
 
 ## 🔗 Related Links
 
-- [Final Presenatation Document](/summeraize/Document/Project_Requirement.md)
-- [Software Design Document](/summeraize/Document/SummarAIze_DataDesign.pdf)
-- [Functional & Non-Functional Requirements](/summeraize/Document/Use_cases.md)
+- [Final Presenatation Document](/summeraize/Document/Final_Presentation_Document.pdf)
+- [Functional & Non-Functional Requirements](/summeraize/Document/Project_Requirement.md)
+- [MileStone Documentation](/summeraize/Document/Milestone.md)
 - [Use Cases](/summeraize/Document/Use_cases.md)
 - [UI Design (Figma)](https://www.figma.com/design/Z75XG7AuxpYYATCS8o7In2/SummarAIze?node-id=0-1&p=f&t=zk77b4eVKRgLqtIL-0)
-- [Data Design](/summeraize/Document/Use_cases.md)
-- [Gentt Chart](/summeraize/Document/Use_cases.md)
-- [Bug Report](/summeraize/Document/Use_cases.md)
+- [Data Design](/summeraize/Document/updated_api_design.md)
+- [Gentt Chart](/summeraize/Document/gentt.png)
+- [Bug Report](https://docs.google.com/document/d/1YD1cGAYec5Am-RQ4v8fjw25pL-mVJ49lrDPOW2bCgCY/edit?tab=t.7j99t12qhzoy)
 
 ---
 
