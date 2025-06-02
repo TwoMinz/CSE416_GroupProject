@@ -35,13 +35,13 @@ gantt
     Requirements Analysis    :done, 2025-03-15, 2025-03-21
     System Design           :done, 2025-03-22, 2025-04-14
     section Implementation
-    Milestone 1             :active, 2025-04-15, 2025-04-23
-    Milestone 2             :2025-04-24, 2025-04-30
-    Milestone 3             :2025-05-01, 2025-05-12
-    Milestone 4 (Beta)      :2025-05-13, 2025-05-19
+    Milestone 1             :done, 2025-04-15, 2025-04-23
+    Milestone 2             :done, 2025-04-24, 2025-04-30
+    Milestone 3             :done, 2025-05-01, 2025-05-12
+    Milestone 4 (Beta)      :done, 2025-05-13, 2025-05-19
     section Wrap-up
-    Final Preparation       :2025-05-20, 2025-05-27
-    Final Presentation      :milestone, 2025-05-28, 1d
+    Final Preparation       :done, 2025-05-20, 2025-05-27
+    Final Presentation      :done, milestone, 2025-05-28, 1d
 ```
 
 ---
@@ -51,7 +51,7 @@ gantt
 
 **Due: April 23, 2025 | Status: ✅ COMPLETE**
 
-<details>
+<details open>
 <summary><b>📋 Milestone 1 Requirements Checklist</b></summary>
 
 ### 💾 Database Implementation (Minhyeok)
@@ -121,7 +121,7 @@ gantt
 
 **Due: April 30, 2025 | Status: ✅ COMPLETE**
 
-<details>
+<details open>
 <summary><b>📋 Milestone 2 Requirements Checklist</b></summary>
 
 ### 🔄 Complete API Server Implementation (Minhyeok)
@@ -191,7 +191,7 @@ gantt
 
 **Due: May 12, 2025 | Status: ✅ COMPLETE**
 
-<details>
+<details open>
 <summary><b>📋 Milestone 3 Requirements Checklist</b></summary>
 
 ### 🎨 Complete Frontend Implementation (Semin)
@@ -261,7 +261,7 @@ gantt
 
 **Due: May 19, 2025 | Status: ✅ COMPLETE**
 
-<details>
+<details open>
 <summary><b>📋 Milestone 4 Requirements Checklist</b></summary>
 
 ### 🌐 Web Application Deployment (Semin)
@@ -327,7 +327,7 @@ gantt
 
 **Due: May 28, 2025 | Status: ✅ COMPLETE**
 
-<details>
+<details open>
 <summary><b>📋 Final Requirements Checklist</b></summary>
 
 ### 🧪 Final Testing and Bug Fixes
